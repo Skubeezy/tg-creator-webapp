@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, ChevronRight, Bot, Key, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Plus, ChevronRight, Bot, Key, Loader2, CheckCircle, ArrowLeft, ExternalLink } from 'lucide-react';
 import { SettingsView } from './SettingsView';
 import { TranslationDict } from '@/lib/translations';
 
@@ -62,17 +62,24 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                 {wizardStep === 'token' && (
                     <div className="flex flex-col gap-4">
                         <div className="tg-card flex flex-col gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-[10px] flex items-center justify-center"
-                                    style={{ background: 'rgba(51, 144, 236, 0.1)', color: 'var(--tg-accent)' }}>
-                                    <Key size={20} strokeWidth={2} />
+                            <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-[10px] flex items-center justify-center"
+                                        style={{ background: 'rgba(51, 144, 236, 0.1)', color: 'var(--tg-accent)' }}>
+                                        <Key size={20} strokeWidth={2} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[15px] font-semibold">Bot Token</p>
+                                        <p className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>
+                                            {isRu ? 'Получите в @BotFather' : 'Get it from @BotFather'}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-[15px] font-semibold">Bot Token</p>
-                                    <p className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>
-                                        {isRu ? 'Получите в @BotFather' : 'Get it from @BotFather'}
-                                    </p>
-                                </div>
+                                <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold"
+                                    style={{ backgroundColor: 'color-mix(in srgb, var(--tg-accent) 12%, transparent)', color: 'var(--tg-accent)' }}>
+                                    @BotFather <ExternalLink size={11} />
+                                </a>
                             </div>
                             <input
                                 type="text"
@@ -167,22 +174,6 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                         <Plus size={22} strokeWidth={2.2} />
                     </div>
                     <span className="text-[15px] font-medium">{t.createNewBot}</span>
-                </button>
-            </div>
-
-            <div className="tg-card !p-0 overflow-hidden">
-                <button onClick={() => setSelectedBot(true)} className="list-row w-full justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0"
-                            style={{ backgroundColor: 'var(--tg-accent)' }}>
-                            <Bot size={24} strokeWidth={2} />
-                        </div>
-                        <div className="text-left">
-                            <span className="text-[15px] font-semibold leading-tight block">FanGate</span>
-                            <span className="text-[13px]" style={{ color: 'var(--tg-link)' }}>@Fan_Gate_Bot</span>
-                        </div>
-                    </div>
-                    <ChevronRight size={18} style={{ color: 'var(--tg-hint)', opacity: 0.5 }} />
                 </button>
             </div>
 

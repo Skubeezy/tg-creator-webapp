@@ -310,39 +310,57 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
-  background: color-mix(in srgb, var(--tg-accent) 15%, transparent);
+  background: color-mix(in srgb, var(--tg-accent) 12%, transparent);
   transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Seamless waves — doubled width, translate -50%→0 so it loops perfectly */
 .water-wave {
   position: absolute;
-  top: -20px;
-  left: -100%;
-  width: 300%;
-  height: 40px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 20 Q150 0 300 20 Q450 40 600 20 Q750 0 900 20 Q1050 40 1200 20 L1200 40 L0 40 Z' fill='rgba(51,144,236,0.15)'/%3E%3C/svg%3E");
-  background-size: 400px 40px;
-  animation: bigWave 4s linear infinite;
+  top: -18px;
+  left: 0;
+  width: 200%;
+  height: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 36'%3E%3Cpath d='M0 18 Q75 4 150 18 Q225 32 300 18 Q375 4 450 18 Q525 32 600 18 L600 36 L0 36 Z' fill='currentColor'/%3E%3C/svg%3E");
+  background-size: 300px 36px;
+  background-repeat: repeat-x;
+  color: color-mix(in srgb, var(--tg-accent) 18%, transparent);
+  animation: seamlessWave 3s linear infinite;
 }
 
 .water-wave-2 {
   position: absolute;
-  top: -12px;
-  left: -100%;
-  width: 300%;
-  height: 32px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 32'%3E%3Cpath d='M0 16 Q150 4 300 16 Q450 28 600 16 Q750 4 900 16 Q1050 28 1200 16 L1200 32 L0 32 Z' fill='rgba(51,144,236,0.1)'/%3E%3C/svg%3E");
-  background-size: 350px 32px;
-  animation: bigWave 5s linear infinite reverse;
+  top: -10px;
+  left: 0;
+  width: 200%;
+  height: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 28'%3E%3Cpath d='M0 14 Q75 2 150 14 Q225 26 300 14 Q375 2 450 14 Q525 26 600 14 L600 28 L0 28 Z' fill='currentColor'/%3E%3C/svg%3E");
+  background-size: 250px 28px;
+  background-repeat: repeat-x;
+  color: color-mix(in srgb, var(--tg-accent) 25%, transparent);
+  animation: seamlessWave 4.5s linear infinite reverse;
 }
 
-@keyframes bigWave {
-  0% {
-    transform: translateX(0);
+.water-wave-3 {
+  position: absolute;
+  top: -5px;
+  left: 0;
+  width: 200%;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 20'%3E%3Cpath d='M0 10 Q75 2 150 10 Q225 18 300 10 Q375 2 450 10 Q525 18 600 10 L600 20 L0 20 Z' fill='currentColor'/%3E%3C/svg%3E");
+  background-size: 350px 20px;
+  background-repeat: repeat-x;
+  color: color-mix(in srgb, var(--tg-accent) 10%, transparent);
+  animation: seamlessWave 6s linear infinite;
+}
+
+@keyframes seamlessWave {
+  from {
+    transform: translateX(-50%);
   }
 
-  100% {
-    transform: translateX(33.33%);
+  to {
+    transform: translateX(0);
   }
 }
 
@@ -365,12 +383,10 @@ button {
   transform: translateY(0);
 }
 
-/* Mini bar chart bars */
 .mini-bar {
   transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* SVG line chart draw animation */
 .chart-line {
   stroke-dasharray: 200;
   stroke-dashoffset: 200;
@@ -379,4 +395,62 @@ button {
 
 .chart-line.drawn {
   stroke-dashoffset: 0;
+}
+
+/* ═══════ Disable scroll on short pages ═══════ */
+.carousel-slide.no-scroll {
+  overflow: hidden;
+}
+
+/* ═══════ Commission Info Modal ═══════ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 16px 32px;
+  background: var(--tg-bg);
+  animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.modal-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tg-separator);
+  margin: 0 auto 16px;
 }

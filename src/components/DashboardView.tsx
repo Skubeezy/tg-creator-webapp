@@ -1,12 +1,13 @@
 'use client';
 
-import { Activity, Users, DollarSign, Bot, TrendingUp, Sparkles, MessageCircle, UserPlus, Settings, ArrowRight, BarChart3, Zap } from 'lucide-react';
+import { Activity, Users, Bot, TrendingUp, Sparkles, MessageCircle, UserPlus, Settings, ArrowRight, Zap, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import WebApp from '@twa-dev/sdk';
 import { TranslationDict } from '@/lib/translations';
 
 const TIERS = [
-    { rate: 10, min: 0, max: 2500 },
+    { rate: 15, min: 0, max: 500 },
+    { rate: 10, min: 500, max: 2500 },
     { rate: 9, min: 2500, max: 5000 },
     { rate: 8, min: 5000, max: 10000 },
     { rate: 7, min: 10000, max: 25000 },
@@ -30,17 +31,18 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
         lifetimeRevenue: 0,
         activeSubs: 0,
         monthlyMrr: 0,
-        commissionRate: 10
+        commissionRate: 15
     });
     const [showWelcome, setShowWelcome] = useState(false);
+    const [showCommissionModal, setShowCommissionModal] = useState(false);
     const [animated, setAnimated] = useState(false);
+    const isRu = t.dashboard === 'Дашборд';
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const seen = localStorage.getItem('fangate_welcome_seen');
             if (!seen) setShowWelcome(true);
         }
-        // Trigger animations after mount
         setTimeout(() => setAnimated(true), 100);
     }, []);
 
@@ -123,17 +125,20 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                         <p className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>{t.creatorDashboard}</p>
                     </div>
                 </div>
-                <div className="px-2.5 py-1 rounded-full text-[11px] font-bold"
+                {/* Commission badge — clickable */}
+                <button onClick={() => setShowCommissionModal(true)}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-bold"
                     style={{ backgroundColor: 'color-mix(in srgb, var(--tg-accent) 12%, transparent)', color: 'var(--tg-accent)' }}>
                     {tier.rate}% {t.commissionLabel}
-                </div>
+                </button>
             </header>
 
             {/* Revenue Card with Water */}
             <div className="water-card">
                 <div className="water-fill" style={{ height: `${animated ? waterLevel : 0}%` }}>
                     <div className="water-wave" />
-                    <div className="water-wave water-wave-2" />
+                    <div className="water-wave-2" />
+                    <div className="water-wave-3" />
                 </div>
                 <div className="water-content">
                     <p className="text-[12px] font-medium opacity-70 uppercase tracking-wide">{t.lifetimeRevenue}</p>
@@ -151,7 +156,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                 </div>
             </div>
 
-            {/* Animated Stats Cards */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-3">
                 <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.1s' }}>
                     <div className="flex items-center gap-2 mb-2">
@@ -162,8 +167,6 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                         <span className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>{t.activeSubs}</span>
                     </div>
                     <div className="text-[28px] font-bold" style={{ letterSpacing: '-0.03em' }}>{stats.activeSubs}</div>
-                    <div className="text-[11px] font-semibold mt-0.5" style={{ color: '#34c759' }}>+12 {t.thisWeek}</div>
-                    {/* Mini bar chart animation */}
                     <div className="flex items-end gap-[3px] mt-3 h-[28px]">
                         {[35, 55, 40, 65, 50, 70, 85].map((h, i) => (
                             <div key={i} className="flex-1 rounded-[2px] mini-bar"
@@ -185,32 +188,25 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                         <span className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>{t.monthlyMrr}</span>
                     </div>
                     <div className="text-[28px] font-bold" style={{ letterSpacing: '-0.03em' }}>${stats.monthlyMrr.toLocaleString()}</div>
-                    <div className="text-[11px] font-semibold mt-0.5" style={{ color: '#34c759' }}>+5% {t.growth}</div>
-                    {/* Mini line chart animation */}
                     <div className="mt-3 h-[28px] relative overflow-hidden">
                         <svg className="w-full h-full" viewBox="0 0 100 28" preserveAspectRatio="none">
-                            <path
-                                d="M0 24 L14 18 L28 22 L42 12 L56 16 L70 8 L84 10 L100 4"
-                                fill="none"
-                                stroke="rgba(0, 122, 255, 0.35)"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                className={`chart-line ${animated ? 'drawn' : ''}`}
-                            />
+                            <path d="M0 24 L14 18 L28 22 L42 12 L56 16 L70 8 L84 10 L100 4"
+                                fill="none" stroke="rgba(0, 122, 255, 0.35)" strokeWidth="2" strokeLinecap="round"
+                                className={`chart-line ${animated ? 'drawn' : ''}`} />
                         </svg>
                     </div>
                 </div>
             </div>
 
-            {/* Quick Stats Row */}
+            {/* Tier Progress Row */}
             <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.3s' }}>
-                <div className="flex items-center justify-between">
+                <button className="flex items-center justify-between w-full" onClick={() => setShowCommissionModal(true)}>
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-[8px] flex items-center justify-center"
                             style={{ background: 'rgba(255, 149, 0, 0.12)', color: '#ff9500' }}>
                             <Zap size={16} strokeWidth={2.2} />
                         </div>
-                        <div>
+                        <div className="text-left">
                             <span className="text-[14px] font-medium block">{t.commissionLabel}</span>
                             <span className="text-[11px]" style={{ color: 'var(--tg-hint)' }}>
                                 {tier.rate}% → {nextTier ? `${nextTier.rate}%` : '5%'}
@@ -218,7 +214,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {TIERS.slice(0, 5).map((tr, i) => (
+                        {TIERS.slice(0, 6).map((tr, i) => (
                             <div key={i} className="w-2 h-2 rounded-full transition-all duration-500"
                                 style={{
                                     backgroundColor: stats.lifetimeRevenue >= tr.max
@@ -228,8 +224,75 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                                 }} />
                         ))}
                     </div>
-                </div>
+                </button>
             </div>
+
+            {/* ─── Commission Modal ─── */}
+            {showCommissionModal && (
+                <div className="modal-backdrop" onClick={() => setShowCommissionModal(false)}>
+                    <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+                        <div className="modal-handle" />
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-[18px] font-bold">{t.commissionLabel}</h2>
+                            <button onClick={() => setShowCommissionModal(false)}
+                                className="w-7 h-7 rounded-full flex items-center justify-center"
+                                style={{ background: 'var(--tg-separator)' }}>
+                                <X size={14} style={{ color: 'var(--tg-hint)' }} />
+                            </button>
+                        </div>
+                        <p className="text-[13px] mb-4" style={{ color: 'var(--tg-hint)' }}>
+                            {isRu
+                                ? 'Чем больше вы зарабатываете, тем ниже комиссия платформы. Каждый уровень открывается автоматически.'
+                                : 'The more you earn, the lower the platform commission. Each tier unlocks automatically.'}
+                        </p>
+                        <div className="tg-card !p-0 overflow-hidden">
+                            {TIERS.map((tr, idx) => {
+                                const isActive = tier.rate === tr.rate;
+                                const isPassed = stats.lifetimeRevenue >= tr.max;
+                                return (
+                                    <div key={idx}>
+                                        <div className="list-row justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold"
+                                                    style={{
+                                                        backgroundColor: isActive
+                                                            ? 'var(--tg-accent)'
+                                                            : isPassed
+                                                                ? 'rgba(52, 199, 89, 0.12)'
+                                                                : 'var(--tg-separator)',
+                                                        color: isActive
+                                                            ? 'var(--tg-accent-text)'
+                                                            : isPassed
+                                                                ? '#34c759'
+                                                                : 'var(--tg-hint)'
+                                                    }}>
+                                                    {tr.rate}%
+                                                </div>
+                                                <div>
+                                                    <span className={`text-[14px] ${isActive ? 'font-bold' : 'font-medium'}`}>
+                                                        {tr.max === Infinity
+                                                            ? `$${tr.min.toLocaleString()}+`
+                                                            : `$${tr.min.toLocaleString()} — $${tr.max.toLocaleString()}`}
+                                                    </span>
+                                                    {isActive && (
+                                                        <span className="text-[11px] block" style={{ color: 'var(--tg-accent)' }}>
+                                                            {isRu ? 'Текущий уровень' : 'Current tier'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {isPassed && (
+                                                <span className="text-[11px] font-semibold" style={{ color: '#34c759' }}>✓</span>
+                                            )}
+                                        </div>
+                                        {idx < TIERS.length - 1 && <div className="list-separator" />}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

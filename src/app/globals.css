@@ -85,7 +85,7 @@ button {
   flex-shrink: 0;
   padding: 16px;
   padding-bottom: 96px;
-  overflow-y: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -310,54 +310,38 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
-  background: color-mix(in srgb, var(--tg-accent) 10%, transparent);
+  background: linear-gradient(90deg,
+      color-mix(in srgb, var(--tg-accent) 8%, transparent) 0%,
+      color-mix(in srgb, var(--tg-accent) 18%, transparent) 35%,
+      color-mix(in srgb, var(--tg-accent) 12%, transparent) 65%,
+      color-mix(in srgb, var(--tg-accent) 20%, transparent) 100%);
+  background-size: 200% 100%;
+  animation: waterShimmer 5s ease-in-out infinite;
   transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Pure CSS waves — large rotating rounded squares */
-.water-wave,
-.water-wave-2,
-.water-wave-3 {
+/* Soft rounded top edge — creates natural water surface */
+.water-fill::before {
+  content: '';
   position: absolute;
-  left: -25%;
-  width: 150%;
-  aspect-ratio: 1;
-  border-radius: 45%;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  top: -8px;
+  left: -5%;
+  right: -5%;
+  height: 16px;
+  background: inherit;
+  border-radius: 50%;
+  filter: blur(4px);
 }
 
-/* Wave 1 — main, slightly lighter than fill */
-.water-wave {
-  top: -148%;
-  background: color-mix(in srgb, var(--tg-accent) 15%, var(--tg-secondary-bg));
-  opacity: 0.6;
-  animation: waveRotate 7s linear infinite;
-}
+@keyframes waterShimmer {
 
-/* Wave 2 — darker accent */
-.water-wave-2 {
-  top: -146%;
-  background: color-mix(in srgb, var(--tg-accent) 25%, var(--tg-secondary-bg));
-  opacity: 0.4;
-  animation: waveRotate 11s linear infinite reverse;
-}
-
-/* Wave 3 — lightest */
-.water-wave-3 {
-  top: -145%;
-  background: color-mix(in srgb, var(--tg-accent) 8%, var(--tg-secondary-bg));
-  opacity: 0.5;
-  animation: waveRotate 15s linear infinite;
-}
-
-@keyframes waveRotate {
-  from {
-    transform: rotate(0deg);
+  0%,
+  100% {
+    background-position: 0% 0%;
   }
 
-  to {
-    transform: rotate(360deg);
+  50% {
+    background-position: 100% 0%;
   }
 }
 

@@ -132,7 +132,7 @@ export default function AppShell() {
             <nav className="tab-bar">
                 <div className="tab-bar-inner">
                     <div className="tab-pill" style={{
-                        transform: `translateX(${(activeIndex + dragOffset / window.innerWidth) * 100}%)`,
+                        transform: `translateX(${(activeIndex - dragOffset / window.innerWidth) * 100}%)`,
                         transition: isDragging ? 'none' : undefined
                     }} />
                     {[LayoutDashboard, Bot, Wallet].map((Icon, idx) => (

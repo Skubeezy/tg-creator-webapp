@@ -135,11 +135,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
 
             {/* Revenue Card with Water */}
             <div className="water-card">
-                <div className="water-fill" style={{ height: `${animated ? waterLevel : 0}%` }}>
-                    <div className="water-wave" />
-                    <div className="water-wave-2" />
-                    <div className="water-wave-3" />
-                </div>
+                <div className="water-fill" style={{ height: `${animated ? waterLevel : 0}%` }} />
                 <div className="water-content">
                     <p className="text-[12px] font-medium opacity-70 uppercase tracking-wide">{t.lifetimeRevenue}</p>
                     <div className="text-[34px] font-bold tracking-tight" style={{ letterSpacing: '-0.03em' }}>
@@ -168,14 +164,19 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                     </div>
                     <div className="text-[28px] font-bold" style={{ letterSpacing: '-0.03em' }}>{stats.activeSubs}</div>
                     <div className="flex items-end gap-[3px] mt-3 h-[28px]">
-                        {[35, 55, 40, 65, 50, 70, 85].map((h, i) => (
-                            <div key={i} className="flex-1 rounded-[2px] mini-bar"
-                                style={{
-                                    height: animated ? `${h}%` : '0%',
-                                    backgroundColor: 'rgba(52, 199, 89, 0.25)',
-                                    transitionDelay: `${0.3 + i * 0.05}s`
-                                }} />
-                        ))}
+                        {[0, 0, 0, 0, 0, 0, 0].map((_, i) => {
+                            const barH = stats.activeSubs > 0
+                                ? Math.max(10, Math.min(100, (stats.activeSubs / 10) * [35, 55, 40, 65, 50, 70, 85][i]))
+                                : 4;
+                            return (
+                                <div key={i} className="flex-1 rounded-[2px] mini-bar"
+                                    style={{
+                                        height: animated ? `${barH}%` : '0%',
+                                        backgroundColor: stats.activeSubs > 0 ? 'rgba(52, 199, 89, 0.25)' : 'var(--tg-separator)',
+                                        transitionDelay: `${0.3 + i * 0.05}s`
+                                    }} />
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -190,8 +191,12 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                     <div className="text-[28px] font-bold" style={{ letterSpacing: '-0.03em' }}>${stats.monthlyMrr.toLocaleString()}</div>
                     <div className="mt-3 h-[28px] relative overflow-hidden">
                         <svg className="w-full h-full" viewBox="0 0 100 28" preserveAspectRatio="none">
-                            <path d="M0 24 L14 18 L28 22 L42 12 L56 16 L70 8 L84 10 L100 4"
-                                fill="none" stroke="rgba(0, 122, 255, 0.35)" strokeWidth="2" strokeLinecap="round"
+                            <path d={stats.monthlyMrr > 0
+                                ? "M0 24 L14 18 L28 22 L42 12 L56 16 L70 8 L84 10 L100 4"
+                                : "M0 24 L100 24"}
+                                fill="none"
+                                stroke={stats.monthlyMrr > 0 ? 'rgba(0, 122, 255, 0.35)' : 'var(--tg-separator)'}
+                                strokeWidth="2" strokeLinecap="round"
                                 className={`chart-line ${animated ? 'drawn' : ''}`} />
                         </svg>
                     </div>

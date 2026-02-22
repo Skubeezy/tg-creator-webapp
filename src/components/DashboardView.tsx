@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Users, DollarSign, Bot } from 'lucide-react';
+import { Activity, Users, DollarSign, Bot, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import WebApp from '@twa-dev/sdk';
 import { TranslationDict } from '@/lib/translations';
@@ -35,58 +35,64 @@ export function DashboardView({ API_URL, t }: { API_URL: string, t: TranslationD
     }, [API_URL]);
 
     return (
-        <div className="flex flex-col gap-6 w-full">
-            <header className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: 'var(--tg-theme-button-color, #2563eb)' }}>
-                        <Bot size={24} />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold">FanGate</h1>
-                        <p className="text-sm opacity-60">{t.creatorDashboard}</p>
-                    </div>
+        <div className="flex flex-col gap-5 w-full">
+            {/* Header */}
+            <header className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-md"
+                    style={{ backgroundColor: 'var(--tg-theme-button-color, #2563eb)' }}>
+                    <Bot size={24} />
                 </div>
-                <div className="px-3 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: 'var(--tg-theme-secondary-bg-color, #e0f2fe)', color: 'var(--tg-theme-link-color, #2563eb)' }}>
-                    {t.proPlan}
+                <div>
+                    <h1 className="text-xl font-extrabold tracking-tight">FanGate</h1>
+                    <p className="text-xs opacity-50">{t.creatorDashboard}</p>
                 </div>
             </header>
 
-            {/* Main Revenue Card */}
-            <div className="tg-card shadow-lg overflow-hidden relative" style={{ backgroundColor: 'var(--tg-theme-button-color, #2563eb)', color: 'var(--tg-theme-button-text-color, #ffffff)' }}>
+            {/* Revenue Card */}
+            <div className="tg-card relative overflow-hidden"
+                style={{
+                    background: `linear-gradient(135deg, var(--tg-theme-button-color, #2563eb), color-mix(in srgb, var(--tg-theme-button-color, #2563eb) 70%, #000))`,
+                    color: 'var(--tg-theme-button-text-color, #fff)'
+                }}>
                 <div className="relative z-10">
-                    <p className="opacity-80 text-sm mb-1">{t.lifetimeRevenue}</p>
-                    <div className="text-4xl font-black tracking-tight">${stats.lifetimeRevenue.toLocaleString()}</div>
-                    <p className="mt-2 text-xs opacity-90">
-                        {t.platformCommission}: <span className="font-bold">{stats.commissionRate}%</span> ({t.revenuePrefix}12.5k {t.untilReduction} 5%)
-                    </p>
-                    <div className="mt-3 w-full bg-white/20 rounded-full h-1.5">
-                        <div className="bg-white h-1.5 rounded-full" style={{ width: '50%' }}></div>
+                    <p className="text-xs font-medium opacity-70 uppercase tracking-wider mb-1">{t.lifetimeRevenue}</p>
+                    <div className="text-4xl font-black tracking-tighter">
+                        ${stats.lifetimeRevenue.toLocaleString()}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-3">
+                        <TrendingUp size={14} className="opacity-70" />
+                        <span className="text-xs opacity-80">
+                            {t.platformCommission}: <span className="font-bold">{stats.commissionRate}%</span>
+                        </span>
+                    </div>
+                    <div className="mt-3 w-full bg-white/20 rounded-full h-1">
+                        <div className="bg-white h-1 rounded-full transition-all duration-700" style={{ width: '50%' }} />
                     </div>
                 </div>
-                {/* Decor */}
-                <div className="absolute -right-6 -bottom-6 opacity-20 transform rotate-12">
-                    <DollarSign size={120} />
+                {/* Background decoration */}
+                <div className="absolute -right-8 -bottom-8 opacity-10 transform rotate-12">
+                    <DollarSign size={140} strokeWidth={1} />
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
                 <div className="tg-card flex flex-col gap-2">
-                    <div className="flex items-center gap-2 opacity-60">
-                        <Users size={18} />
-                        <span className="text-sm">{t.activeSubs}</span>
+                    <div className="flex items-center gap-2 opacity-50">
+                        <Users size={16} strokeWidth={2} />
+                        <span className="text-xs font-medium">{t.activeSubs}</span>
                     </div>
-                    <div className="text-2xl font-bold">{stats.activeSubs}</div>
-                    <div className="text-xs text-green-500 font-medium">+12 {t.thisWeek}</div>
+                    <div className="text-3xl font-black tracking-tight">{stats.activeSubs}</div>
+                    <div className="text-[11px] font-semibold" style={{ color: 'var(--tg-theme-link-color, #34c759)' }}>+12 {t.thisWeek}</div>
                 </div>
 
                 <div className="tg-card flex flex-col gap-2">
-                    <div className="flex items-center gap-2 opacity-60">
-                        <Activity size={18} />
-                        <span className="text-sm">{t.monthlyMrr}</span>
+                    <div className="flex items-center gap-2 opacity-50">
+                        <Activity size={16} strokeWidth={2} />
+                        <span className="text-xs font-medium">{t.monthlyMrr}</span>
                     </div>
-                    <div className="text-2xl font-bold">${stats.monthlyMrr.toLocaleString()}</div>
-                    <div className="text-xs text-green-500 font-medium">+5% {t.growth}</div>
+                    <div className="text-3xl font-black tracking-tight">${stats.monthlyMrr.toLocaleString()}</div>
+                    <div className="text-[11px] font-semibold" style={{ color: 'var(--tg-theme-link-color, #34c759)' }}>+5% {t.growth}</div>
                 </div>
             </div>
         </div>

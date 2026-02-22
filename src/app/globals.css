@@ -310,57 +310,54 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
-  background: color-mix(in srgb, var(--tg-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--tg-accent) 10%, transparent);
   transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Seamless waves — doubled width, translate -50%→0 so it loops perfectly */
-.water-wave {
-  position: absolute;
-  top: -18px;
-  left: 0;
-  width: 200%;
-  height: 36px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 36'%3E%3Cpath d='M0 18 Q75 4 150 18 Q225 32 300 18 Q375 4 450 18 Q525 32 600 18 L600 36 L0 36 Z' fill='currentColor'/%3E%3C/svg%3E");
-  background-size: 300px 36px;
-  background-repeat: repeat-x;
-  color: color-mix(in srgb, var(--tg-accent) 18%, transparent);
-  animation: seamlessWave 3s linear infinite;
-}
-
-.water-wave-2 {
-  position: absolute;
-  top: -10px;
-  left: 0;
-  width: 200%;
-  height: 28px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 28'%3E%3Cpath d='M0 14 Q75 2 150 14 Q225 26 300 14 Q375 2 450 14 Q525 26 600 14 L600 28 L0 28 Z' fill='currentColor'/%3E%3C/svg%3E");
-  background-size: 250px 28px;
-  background-repeat: repeat-x;
-  color: color-mix(in srgb, var(--tg-accent) 25%, transparent);
-  animation: seamlessWave 4.5s linear infinite reverse;
-}
-
+/* Pure CSS waves — large rotating rounded squares */
+.water-wave,
+.water-wave-2,
 .water-wave-3 {
   position: absolute;
-  top: -5px;
-  left: 0;
-  width: 200%;
-  height: 20px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 20'%3E%3Cpath d='M0 10 Q75 2 150 10 Q225 18 300 10 Q375 2 450 10 Q525 18 600 10 L600 20 L0 20 Z' fill='currentColor'/%3E%3C/svg%3E");
-  background-size: 350px 20px;
-  background-repeat: repeat-x;
-  color: color-mix(in srgb, var(--tg-accent) 10%, transparent);
-  animation: seamlessWave 6s linear infinite;
+  left: -25%;
+  width: 150%;
+  aspect-ratio: 1;
+  border-radius: 45%;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
 }
 
-@keyframes seamlessWave {
+/* Wave 1 — main, slightly lighter than fill */
+.water-wave {
+  top: -148%;
+  background: color-mix(in srgb, var(--tg-accent) 15%, var(--tg-secondary-bg));
+  opacity: 0.6;
+  animation: waveRotate 7s linear infinite;
+}
+
+/* Wave 2 — darker accent */
+.water-wave-2 {
+  top: -146%;
+  background: color-mix(in srgb, var(--tg-accent) 25%, var(--tg-secondary-bg));
+  opacity: 0.4;
+  animation: waveRotate 11s linear infinite reverse;
+}
+
+/* Wave 3 — lightest */
+.water-wave-3 {
+  top: -145%;
+  background: color-mix(in srgb, var(--tg-accent) 8%, var(--tg-secondary-bg));
+  opacity: 0.5;
+  animation: waveRotate 15s linear infinite;
+}
+
+@keyframes waveRotate {
   from {
-    transform: translateX(-50%);
+    transform: rotate(0deg);
   }
 
   to {
-    transform: translateX(0);
+    transform: rotate(360deg);
   }
 }
 
@@ -395,6 +392,55 @@ button {
 
 .chart-line.drawn {
   stroke-dashoffset: 0;
+}
+
+/* ═══════ View Transitions ═══════ */
+.view-enter {
+  animation: viewSlideIn 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.view-exit {
+  animation: viewSlideOut 0.25s ease forwards;
+}
+
+@keyframes viewSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0.5;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes viewSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(-30%);
+    opacity: 0;
+  }
+}
+
+.view-enter-back {
+  animation: viewSlideInBack 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@keyframes viewSlideInBack {
+  from {
+    transform: translateX(-30%);
+    opacity: 0.5;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* ═══════ Disable scroll on short pages ═══════ */

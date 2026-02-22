@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { LayoutDashboard, Bot, Wallet } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { DashboardView } from '@/components/DashboardView';
@@ -8,13 +8,19 @@ import { BotsView } from '@/components/BotsView';
 import { PayoutsView } from '@/components/PayoutsView';
 import { getTranslation } from '@/lib/translations';
 
-type Tab = 'dashboard' | 'bots' | 'payouts';
-
 export default function AppShell() {
     const [isMounted, setIsMounted] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const [langCode, setLangCode] = useState<string>('en');
     const [userName, setUserName] = useState<string>('Creator');
+
+    // Swipe state
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const startX = useRef(0);
+    const startY = useRef(0);
+    const isHorizontal = useRef<boolean | null>(null);
+    const trackRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -33,7 +39,59 @@ export default function AppShell() {
 
     const handleTabChange = useCallback((idx: number) => {
         setActiveIndex(idx);
+        setDragOffset(0);
     }, []);
+
+    // ─── Touch Swipe Handlers ───
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        startX.current = e.touches[0].clientX;
+        startY.current = e.touches[0].clientY;
+        isHorizontal.current = null;
+        setIsDragging(true);
+    }, []);
+
+    const handleTouchMove = useCallback((e: React.TouchEvent) => {
+        if (!isDragging) return;
+        const dx = e.touches[0].clientX - startX.current;
+        const dy = e.touches[0].clientY - startY.current;
+
+        // Determine direction on first significant movement
+        if (isHorizontal.current === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+            isHorizontal.current = Math.abs(dx) > Math.abs(dy);
+        }
+
+        if (!isHorizontal.current) return;
+
+        // Prevent vertical scroll when swiping horizontally
+        e.preventDefault();
+
+        // Rubber band effect at edges
+        let offset = dx;
+        if ((activeIndex === 0 && dx > 0) || (activeIndex === 2 && dx < 0)) {
+            offset = dx * 0.25;
+        }
+        setDragOffset(offset);
+    }, [isDragging, activeIndex]);
+
+    const handleTouchEnd = useCallback(() => {
+        setIsDragging(false);
+        isHorizontal.current = null;
+
+        const threshold = window.innerWidth * 0.2;
+        if (dragOffset < -threshold && activeIndex < 2) {
+            setActiveIndex(prev => prev + 1);
+        } else if (dragOffset > threshold && activeIndex > 0) {
+            setActiveIndex(prev => prev - 1);
+        }
+        setDragOffset(0);
+    }, [dragOffset, activeIndex]);
+
+    // Calculate carousel transform
+    const trackTransform = useMemo(() => {
+        const base = -(activeIndex * 100);
+        const pxOffset = dragOffset;
+        return `translateX(calc(${base}% + ${pxOffset}px))`;
+    }, [activeIndex, dragOffset]);
 
     if (!isMounted) {
         return (
@@ -49,7 +107,17 @@ export default function AppShell() {
 
     return (
         <main className="app-shell">
-            <div className="carousel-track" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>
+            <div
+                ref={trackRef}
+                className="carousel-track"
+                style={{
+                    transform: trackTransform,
+                    transition: isDragging ? 'none' : undefined
+                }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
                 <div className="carousel-slide">
                     <DashboardView API_URL={API_URL} t={t} userName={userName} />
                 </div>
@@ -63,7 +131,10 @@ export default function AppShell() {
 
             <nav className="tab-bar">
                 <div className="tab-bar-inner">
-                    <div className="tab-pill" style={{ transform: `translateX(${activeIndex * 100}%)` }} />
+                    <div className="tab-pill" style={{
+                        transform: `translateX(${(activeIndex + dragOffset / window.innerWidth) * 100}%)`,
+                        transition: isDragging ? 'none' : undefined
+                    }} />
                     {[LayoutDashboard, Bot, Wallet].map((Icon, idx) => (
                         <button
                             key={idx}

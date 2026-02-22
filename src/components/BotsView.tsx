@@ -87,6 +87,12 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                     },
                     body: JSON.stringify({ token: token.trim() })
                 });
+
+                if (res.status === 401) {
+                    setError(isRu ? 'Ошибка авторизации. Перезапустите приложение.' : 'Auth error. Restart the app.');
+                    return;
+                }
+
                 const data = await res.json();
 
                 if (data.success && data.bot) {
@@ -99,11 +105,13 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                     });
                     setWizardStep('preview');
                 } else {
-                    setError(data.error || (isRu ? 'Ошибка. Попробуйте снова.' : 'Error. Try again.'));
+                    setError(data.message || data.error || `${isRu ? 'Ошибка' : 'Error'}: ${res.status}`);
                 }
+            } else {
+                setError(isRu ? 'WebApp не инициализирован' : 'WebApp not initialized');
             }
-        } catch (_) {
-            setError(isRu ? 'Ошибка сети. Попробуйте снова.' : 'Network error. Try again.');
+        } catch (e: any) {
+            setError(`${isRu ? 'Ошибка сети' : 'Network error'}: ${e.message || 'unknown'}`);
         } finally {
             setIsLoading(false);
         }

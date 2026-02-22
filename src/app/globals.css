@@ -4,12 +4,23 @@
 
 :root {
   --tg-bg: var(--tg-theme-bg-color, #ffffff);
-  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #efeff4);
   --tg-text: var(--tg-theme-text-color, #000000);
-  --tg-hint: var(--tg-theme-hint-color, #999999);
+  --tg-hint: var(--tg-theme-hint-color, #8e8e93);
   --tg-accent: var(--tg-theme-button-color, #3390ec);
   --tg-accent-text: var(--tg-theme-button-text-color, #ffffff);
   --tg-link: var(--tg-theme-link-color, #3390ec);
+  --tg-separator: rgba(60, 60, 67, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tg-separator: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(30, 30, 30, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.08);
+  }
 }
 
 body {
@@ -17,7 +28,7 @@ body {
   color: var(--tg-text);
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -35,16 +46,20 @@ button {
   border: none;
   background: none;
   outline: none;
+  font-family: inherit;
 }
 
-/* ─── Cards ─── */
+/* ═══════ iOS Glass Cards ═══════ */
 .tg-card {
-  background-color: var(--tg-bg);
-  border-radius: 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 14px;
   padding: 16px;
+  border: 0.5px solid var(--glass-border);
 }
 
-/* ─── App Shell ─── */
+/* ═══════ App Shell ═══════ */
 .app-shell {
   width: 100%;
   min-height: 100vh;
@@ -56,11 +71,11 @@ button {
   color: var(--tg-text);
 }
 
-/* ─── Carousel (side-by-side views) ─── */
+/* ═══════ Carousel ═══════ */
 .carousel-track {
   display: flex;
   flex: 1;
-  transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 
@@ -69,52 +84,56 @@ button {
   width: 100%;
   flex-shrink: 0;
   padding: 16px;
-  padding-bottom: 100px;
+  padding-bottom: 96px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* ─── Telegram-style Tab Bar ─── */
+/* ═══════ Telegram iOS Tab Bar (1:1 replica) ═══════ */
 .tab-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 100;
-  padding: 8px 12px;
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding: 6px 10px;
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
 }
 
 .tab-bar-inner {
   position: relative;
   display: flex;
   align-items: center;
-  border-radius: 20px;
-  padding: 4px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  border-radius: 22px;
+  padding: 3px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    0 4px 24px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 @media (prefers-color-scheme: dark) {
   .tab-bar-inner {
-    background: rgba(30, 30, 30, 0.88);
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.06),
+      0 4px 24px rgba(0, 0, 0, 0.4);
   }
 }
 
-/* Sliding pill */
+/* Sliding pill — exact Telegram style: light accent oval */
 .tab-pill {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc((100% - 8px) / 3);
-  border-radius: 16px;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 3);
+  border-radius: 19px;
   background: var(--tg-accent);
-  opacity: 0.12;
-  transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+  opacity: 0.1;
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
   pointer-events: none;
 }
@@ -126,18 +145,18 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 6px 0;
+  gap: 1px;
+  padding: 7px 0 5px;
   position: relative;
   z-index: 1;
   color: var(--tg-hint);
-  transition: color 0.25s ease;
+  transition: color 0.2s ease;
 }
 
 .tab-item span {
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .tab-item.active {
@@ -145,10 +164,15 @@ button {
 }
 
 .tab-item.active span {
-  font-weight: 700;
+  font-weight: 600;
 }
 
-/* ─── Launch Screen ─── */
+/* Active press state */
+.tab-item:active {
+  opacity: 0.6;
+}
+
+/* ═══════ Launch Screen ═══════ */
 .launch-screen {
   position: fixed;
   inset: 0;
@@ -157,47 +181,49 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 20px;
   background: var(--tg-bg);
 }
 
 .launch-logo {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--tg-accent);
-  animation: launchPulse 1.2s ease-in-out infinite;
+  animation: breathe 2s ease-in-out infinite;
+  box-shadow: 0 8px 32px rgba(51, 144, 236, 0.3);
 }
 
 .launch-text {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--tg-text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .launch-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2.5px solid var(--tg-hint);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--tg-separator);
   border-top-color: var(--tg-accent);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  opacity: 0.6;
+  animation: spin 0.7s linear infinite;
 }
 
-@keyframes launchPulse {
+@keyframes breathe {
 
   0%,
   100% {
     transform: scale(1);
+    opacity: 1;
   }
 
   50% {
-    transform: scale(1.06);
+    transform: scale(1.04);
+    opacity: 0.9;
   }
 }
 
@@ -205,4 +231,64 @@ button {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ═══════ Section headers (iOS style) ═══════ */
+.section-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tg-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0 16px;
+  margin-bottom: 6px;
+}
+
+/* ═══════ iOS List Rows ═══════ */
+.list-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  transition: background 0.15s ease;
+}
+
+.list-row:active {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  .list-row:active {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.list-separator {
+  height: 0.5px;
+  background: var(--tg-separator);
+  margin-left: 60px;
+}
+
+/* ═══════ Action Button (iOS style) ═══════ */
+.action-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--tg-accent);
+  color: var(--tg-accent-text);
+  transition: opacity 0.15s ease;
+}
+
+.action-btn:active {
+  opacity: 0.7;
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

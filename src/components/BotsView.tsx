@@ -14,46 +14,44 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
 
     return (
         <div className="flex flex-col gap-4 w-full">
-            <h1 className="text-2xl font-bold mb-2">{t.myBots}</h1>
+            <h1 className="text-[22px] font-bold px-1" style={{ letterSpacing: '-0.02em' }}>{t.myBots}</h1>
 
-            {/* Create Bot Button - BotFather Style */}
+            {/* iOS grouped list */}
             <div className="tg-card !p-0 overflow-hidden">
+                {/* Create Bot */}
                 <button
-                    className="w-full p-4 flex items-center gap-4 transition-colors active:bg-black/5 dark:active:bg-white/5"
-                    style={{ color: 'var(--tg-theme-button-color, #2563eb)' }}
-                    onClick={() => {
-                        // Normally this would start the bot creation flow in BotFather or show instructions
-                        // For MVP, we'll pretend there is one bot and just open it
-                        setSelectedBot(true);
-                    }}
+                    className="list-row w-full gap-3"
+                    style={{ color: 'var(--tg-accent)' }}
+                    onClick={() => setSelectedBot(true)}
                 >
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 border-current">
-                        <Plus size={24} />
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                        style={{ background: 'rgba(51, 144, 236, 0.1)' }}>
+                        <Plus size={22} strokeWidth={2.2} />
                     </div>
-                    <span className="font-medium text-lg">{t.createNewBot}</span>
+                    <span className="text-[15px] font-medium">{t.createNewBot}</span>
                 </button>
             </div>
 
-            {/* List of active bots */}
             <div className="tg-card !p-0 overflow-hidden">
                 <button
                     onClick={() => setSelectedBot(true)}
-                    className="w-full p-4 flex items-center justify-between transition-colors active:bg-black/5 dark:active:bg-white/5"
+                    className="list-row w-full justify-between"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm" style={{ backgroundColor: 'var(--tg-theme-button-color, #2563eb)' }}>
-                            <Bot size={28} />
+                    <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0"
+                            style={{ backgroundColor: 'var(--tg-accent)' }}>
+                            <Bot size={24} strokeWidth={2} />
                         </div>
-                        <div className="text-left flex flex-col">
-                            <span className="font-bold text-lg leading-tight">FanGate</span>
-                            <span className="text-sm opacity-60" style={{ color: 'var(--tg-theme-link-color, #2563eb)' }}>@Fan_Gate_Bot</span>
+                        <div className="text-left">
+                            <span className="text-[15px] font-semibold leading-tight block">FanGate</span>
+                            <span className="text-[13px]" style={{ color: 'var(--tg-link)' }}>@Fan_Gate_Bot</span>
                         </div>
                     </div>
-                    <ChevronRight className="opacity-40" />
+                    <ChevronRight size={18} style={{ color: 'var(--tg-hint)', opacity: 0.5 }} />
                 </button>
             </div>
 
-            <p className="text-xs text-center opacity-40 mt-4 px-4">
+            <p className="text-[12px] text-center px-8" style={{ color: 'var(--tg-hint)' }}>
                 {t.botAdminHint}
             </p>
         </div>

@@ -32,7 +32,19 @@ export const translations = {
         networkError: "Network error",
         loading: "Loading...",
         revenuePrefix: "",
-        stars: "Stars"
+        stars: "Stars",
+        // Welcome / Onboarding
+        welcomeTitle: "Welcome to FanGate!",
+        welcomeDesc: "Monetize your Telegram channel with paid subscriptions via Telegram Stars.",
+        welcomeStep1: "Create a bot via @BotFather",
+        welcomeStep2: "Send us the bot token",
+        welcomeStep3: "Add the bot as admin to your channel",
+        welcomeStep4: "Set subscription prices and start earning",
+        welcomeButton: "Get Started",
+        // Commission tiers
+        commissionLabel: "Commission",
+        nextTier: "Next tier",
+        earnMore: "Earn more to unlock",
     },
     ru: {
         dashboard: "Дашборд",
@@ -67,7 +79,19 @@ export const translations = {
         networkError: "Ошибка сети",
         loading: "Загрузка...",
         revenuePrefix: "Ещё $",
-        stars: "звезд"
+        stars: "звезд",
+        // Welcome / Onboarding
+        welcomeTitle: "Добро пожаловать в FanGate!",
+        welcomeDesc: "Монетизируйте ваш Telegram-канал с помощью платных подписок через Telegram Stars.",
+        welcomeStep1: "Создайте бота через @BotFather",
+        welcomeStep2: "Отправьте нам токен бота",
+        welcomeStep3: "Добавьте бота админом в ваш канал",
+        welcomeStep4: "Настройте цены подписок и начните зарабатывать",
+        welcomeButton: "Начать",
+        // Commission tiers
+        commissionLabel: "Комиссия",
+        nextTier: "Следующий уровень",
+        earnMore: "Заработайте ещё для снижения",
     }
 };
 
@@ -75,7 +99,6 @@ export type TranslationKey = keyof typeof translations['en'];
 export type TranslationDict = Record<TranslationKey, string>;
 
 export function getTranslation(langCode: string | undefined): TranslationDict {
-    // defaults to 'en'. If starting with 'ru', it's russian.
     const code = langCode?.toLowerCase().startsWith('ru') ? 'ru' : 'en';
     return translations[code];
 }

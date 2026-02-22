@@ -292,3 +292,57 @@ button {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ═══════ Water Fill Card ═══════ */
+.water-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  min-height: 140px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 0.5px solid var(--glass-border);
+}
+
+.water-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--tg-accent) 18%, transparent);
+  transition: height 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.water-wave {
+  position: absolute;
+  top: -8px;
+  left: -50%;
+  width: 200%;
+  height: 16px;
+  background:
+    radial-gradient(ellipse at 25% 50%, color-mix(in srgb, var(--tg-accent) 25%, transparent) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 50%, color-mix(in srgb, var(--tg-accent) 15%, transparent) 0%, transparent 50%);
+  animation: waveFlow 3s ease-in-out infinite;
+}
+
+@keyframes waveFlow {
+  0% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(25%);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.water-content {
+  position: relative;
+  z-index: 1;
+  padding: 16px;
+  color: var(--tg-text);
+}

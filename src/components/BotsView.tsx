@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, ChevronRight, Bot, Key, Loader2, CheckCircle, ArrowLeft, ExternalLink, Trash2 } from 'lucide-react';
+import { Plus, ChevronRight, Bot, Key, Loader2, CheckCircle, ArrowLeft, ExternalLink } from 'lucide-react';
 import { SettingsView } from './SettingsView';
 import { TranslationDict } from '@/lib/translations';
 import WebApp from '@twa-dev/sdk';
@@ -9,10 +9,9 @@ import WebApp from '@twa-dev/sdk';
 type WizardStep = 'token' | 'preview' | 'done';
 
 interface BotData {
-    id: number;
+    id: string;
     name: string;
     username: string;
-    token: string;
     photoUrl?: string;
     plans: { period: string; price: number }[];
 }
@@ -20,109 +19,101 @@ interface BotData {
 export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }) {
     const isRu = t.dashboard === 'Дашборд';
     const [bots, setBots] = useState<BotData[]>([]);
-    const [selectedBotId, setSelectedBotId] = useState<number | null>(null);
+    const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
     const [showWizard, setShowWizard] = useState(false);
     const [wizardStep, setWizardStep] = useState<WizardStep>('token');
     const [token, setToken] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [botInfo, setBotInfo] = useState<{ id: number; name: string; username: string; photoUrl?: string } | null>(null);
+    const [botInfo, setBotInfo] = useState<BotData | null>(null);
     const [error, setError] = useState('');
-    const [viewAnim, setViewAnim] = useState('view-enter');
+    const [viewAnim, setViewAnim] = useState('');
 
-    // Load saved bots from localStorage
+    // Load bots from backend API
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('fangate_bots');
-            if (saved) {
-                try { setBots(JSON.parse(saved)); } catch (_) { }
+        const fetchBots = async () => {
+            try {
+                if (typeof window !== 'undefined' && WebApp.initData) {
+                    const res = await fetch(`${API_URL}/me/bots`, {
+                        headers: { 'Authorization': `Bearer ${WebApp.initData}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.bots) {
+                            setBots(data.bots.map((b: any) => ({
+                                id: b.id,
+                                name: (b.settings as any)?.name || 'Bot',
+                                username: b.username || '',
+                                photoUrl: (b.settings as any)?.photoUrl || null,
+                                plans: (b.subscriptionPlans || []).map((p: any) => ({
+                                    period: p.durationDays === 7 ? (isRu ? '1 Неделя' : '1 Week') : (isRu ? '1 Месяц' : '1 Month'),
+                                    price: Number(p.price)
+                                }))
+                            })));
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load bots", e);
             }
-        }
-    }, []);
+        };
+        fetchBots();
+    }, [API_URL, isRu]);
 
-    // Save bots to localStorage
-    const saveBots = (newBots: BotData[]) => {
-        setBots(newBots);
-        localStorage.setItem('fangate_bots', JSON.stringify(newBots));
-    };
-
-    // If a bot is selected, show its settings
     if (selectedBotId !== null) {
         return (
-            <div className={viewAnim}>
+            <div className="view-enter">
                 <SettingsView
                     API_URL={API_URL}
-                    onBack={() => {
-                        setViewAnim('view-enter-back');
-                        setSelectedBotId(null);
-                    }}
+                    onBack={() => { setViewAnim('view-enter-back'); setSelectedBotId(null); }}
                     t={t}
                 />
             </div>
         );
     }
 
-    // Verify token via Telegram Bot API
+    // Create bot via backend API
     const handleTokenSubmit = async () => {
         if (!token.trim()) return;
         setIsLoading(true);
         setError('');
 
         try {
-            const res = await fetch(`https://api.telegram.org/bot${token.trim()}/getMe`);
-            const data = await res.json();
-
-            if (data.ok && data.result) {
-                const bot = data.result;
-                // Try to get bot's profile photo
-                let photoUrl: string | undefined;
-                try {
-                    const photoRes = await fetch(`https://api.telegram.org/bot${token.trim()}/getUserProfilePhotos?user_id=${bot.id}&limit=1`);
-                    const photoData = await photoRes.json();
-                    if (photoData.ok && photoData.result.total_count > 0) {
-                        const fileId = photoData.result.photos[0][0].file_id;
-                        const fileRes = await fetch(`https://api.telegram.org/bot${token.trim()}/getFile?file_id=${fileId}`);
-                        const fileData = await fileRes.json();
-                        if (fileData.ok) {
-                            photoUrl = `https://api.telegram.org/file/bot${token.trim()}/${fileData.result.file_path}`;
-                        }
-                    }
-                } catch (_) { }
-
-                setBotInfo({
-                    id: bot.id,
-                    name: bot.first_name,
-                    username: `@${bot.username}`,
-                    photoUrl
+            if (typeof window !== 'undefined' && WebApp.initData) {
+                const res = await fetch(`${API_URL}/me/bots`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${WebApp.initData}`
+                    },
+                    body: JSON.stringify({ token: token.trim() })
                 });
-                setWizardStep('preview');
-            } else {
-                setError(isRu ? 'Неверный токен. Проверьте и попробуйте снова.' : 'Invalid token. Please check and try again.');
+                const data = await res.json();
+
+                if (data.success && data.bot) {
+                    setBotInfo({
+                        id: data.bot.id,
+                        name: data.bot.name,
+                        username: data.bot.username,
+                        photoUrl: data.bot.photoUrl,
+                        plans: data.bot.plans
+                    });
+                    setWizardStep('preview');
+                } else {
+                    setError(data.error || (isRu ? 'Ошибка. Попробуйте снова.' : 'Error. Try again.'));
+                }
             }
         } catch (_) {
-            setError(isRu ? 'Ошибка сети. Попробуйте снова.' : 'Network error. Please try again.');
+            setError(isRu ? 'Ошибка сети. Попробуйте снова.' : 'Network error. Try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleCreateBot = () => {
-        if (!botInfo) return;
-
-        const newBot: BotData = {
-            id: botInfo.id,
-            name: botInfo.name,
-            username: botInfo.username,
-            token: token.trim(),
-            photoUrl: botInfo.photoUrl,
-            plans: [
-                { period: isRu ? '1 Неделя' : '1 Week', price: 10 },
-                { period: isRu ? '1 Месяц' : '1 Month', price: 25 }
-            ]
-        };
-
-        saveBots([...bots, newBot]);
+    const handleFinish = () => {
+        if (botInfo) {
+            setBots(prev => [...prev, botInfo]);
+        }
         setWizardStep('done');
-
         setTimeout(() => {
             setShowWizard(false);
             setWizardStep('token');
@@ -130,10 +121,6 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
             setBotInfo(null);
             setError('');
         }, 1200);
-    };
-
-    const removeBot = (id: number) => {
-        saveBots(bots.filter(b => b.id !== id));
     };
 
     // ─── Bot Creation Wizard ───
@@ -183,16 +170,10 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                                     border: `1px solid ${error ? '#ff3b30' : 'color-mix(in srgb, var(--tg-hint) 15%, transparent)'}`
                                 }}
                             />
-                            {error && (
-                                <p className="text-[12px]" style={{ color: '#ff3b30' }}>{error}</p>
-                            )}
+                            {error && <p className="text-[12px]" style={{ color: '#ff3b30' }}>{error}</p>}
                         </div>
                         <button className="action-btn" onClick={handleTokenSubmit} disabled={!token.trim() || isLoading}>
-                            {isLoading ? (
-                                <Loader2 size={18} className="animate-spin" />
-                            ) : (
-                                isRu ? 'Подключить бота' : 'Connect Bot'
-                            )}
+                            {isLoading ? <Loader2 size={18} className="animate-spin" /> : (isRu ? 'Подключить бота' : 'Connect Bot')}
                         </button>
                     </div>
                 )}
@@ -217,23 +198,23 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
 
                         <p className="section-header">{isRu ? 'Тарифы по умолчанию' : 'Default Plans'}</p>
                         <div className="tg-card !p-0 overflow-hidden">
-                            <div className="list-row justify-between">
-                                <span className="text-[15px]">{isRu ? '1 Неделя' : '1 Week'}</span>
-                                <span className="text-[15px] font-semibold" style={{ color: 'var(--tg-accent)' }}>$10</span>
-                            </div>
-                            <div className="list-separator" style={{ marginLeft: '16px' }} />
-                            <div className="list-row justify-between">
-                                <span className="text-[15px]">{isRu ? '1 Месяц' : '1 Month'}</span>
-                                <span className="text-[15px] font-semibold" style={{ color: 'var(--tg-accent)' }}>$25</span>
-                            </div>
+                            {botInfo.plans.map((plan, idx) => (
+                                <div key={idx}>
+                                    <div className="list-row justify-between">
+                                        <span className="text-[15px]">{plan.period}</span>
+                                        <span className="text-[15px] font-semibold" style={{ color: 'var(--tg-accent)' }}>${plan.price}</span>
+                                    </div>
+                                    {idx < botInfo.plans.length - 1 && <div className="list-separator" style={{ marginLeft: '16px' }} />}
+                                </div>
+                            ))}
                         </div>
 
                         <p className="text-[12px] text-center" style={{ color: 'var(--tg-hint)' }}>
                             {isRu ? 'Вы сможете изменить тарифы позже' : 'You can change plans later'}
                         </p>
 
-                        <button className="action-btn" onClick={handleCreateBot}>
-                            {isRu ? 'Создать бота' : 'Create Bot'}
+                        <button className="action-btn" onClick={handleFinish}>
+                            {isRu ? 'Готово' : 'Done'}
                         </button>
                     </div>
                 )}
@@ -270,7 +251,6 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                 </button>
             </div>
 
-            {/* Saved bots */}
             {bots.length > 0 && (
                 <div className="tg-card !p-0 overflow-hidden">
                     {bots.map((bot, idx) => (

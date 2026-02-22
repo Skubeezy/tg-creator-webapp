@@ -64,7 +64,13 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
             <div className="view-enter">
                 <SettingsView
                     API_URL={API_URL}
+                    botId={selectedBotId}
                     onBack={() => { setViewAnim('view-enter-back'); setSelectedBotId(null); }}
+                    onDeleted={() => {
+                        setBots(prev => prev.filter(b => b.id !== selectedBotId));
+                        setViewAnim('view-enter-back');
+                        setSelectedBotId(null);
+                    }}
                     t={t}
                 />
             </div>

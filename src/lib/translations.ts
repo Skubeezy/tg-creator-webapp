@@ -96,9 +96,9 @@ export const translations = {
 };
 
 export type TranslationKey = keyof typeof translations['en'];
-export type TranslationDict = Record<TranslationKey, string>;
+export type TranslationDict = Record<TranslationKey, string> & { isRu: boolean };
 
 export function getTranslation(langCode: string | undefined): TranslationDict {
     const code = langCode?.toLowerCase().startsWith('ru') ? 'ru' : 'en';
-    return translations[code];
+    return { ...translations[code], isRu: code === 'ru' };
 }

@@ -47,7 +47,7 @@ export function DashboardView({ API_URL, t }: { API_URL: string, t: TranslationD
             </header>
 
             {/* Revenue Card — glass with accent gradient overlay */}
-            <div className="relative overflow-hidden rounded-[14px] p-4"
+            <div className="relative overflow-hidden rounded-[20px] p-4"
                 style={{
                     background: `linear-gradient(135deg, var(--tg-accent), color-mix(in srgb, var(--tg-accent) 75%, #1a1a2e))`,
                     color: 'var(--tg-accent-text)'

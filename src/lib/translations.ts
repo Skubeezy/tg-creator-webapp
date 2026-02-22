@@ -1,0 +1,81 @@
+export const translations = {
+    en: {
+        dashboard: "Dashboard",
+        myBots: "My Bots",
+        payouts: "Payouts",
+        creatorDashboard: "Creator Dashboard",
+        proPlan: "PRO Plan",
+        lifetimeRevenue: "Lifetime Revenue",
+        platformCommission: "Platform commission",
+        untilReduction: "until reduced to",
+        activeSubs: "Active Subs",
+        thisWeek: "this week",
+        monthlyMrr: "Monthly MRR",
+        growth: "growth",
+        createNewBot: "Create a New Bot",
+        botAdminHint: "Add your bot to a private channel as an administrator to get started.",
+        availablePayout: "Available for payout",
+        withdrawFunds: "Withdraw funds",
+        withdrawHint: "Minimum withdrawal is $50. Payouts are made in USDT(TRC20) or TON.",
+        operationHistory: "Operation history",
+        noHistory: "You have no operation history yet.",
+        botSettings: "Bot Settings",
+        welcomeMessage: "Welcome message",
+        welcomeHint: "This message will be seen by the fan when they send /start to your bot.",
+        subscriptionPlans: "Subscription Plans (Telegram Stars)",
+        monthAccess_1: "1 Month access",
+        monthAccess_3: "3 Months (Discount)",
+        themeHint: "App colors and fonts automatically adapt to your Telegram theme.",
+        saveSettings: "SAVE SETTINGS",
+        settingsSaved: "✅ Settings successfully saved!",
+        saveErrorSignature: "Save error: Invalid WebApp signature",
+        networkError: "Network error",
+        loading: "Loading...",
+        revenuePrefix: "",
+        stars: "Stars"
+    },
+    ru: {
+        dashboard: "Дашборд",
+        myBots: "Мои Боты",
+        payouts: "Выплаты",
+        creatorDashboard: "Панель Креатора",
+        proPlan: "ПРО Тариф",
+        lifetimeRevenue: "Заработано за всё время",
+        platformCommission: "Комиссия платформы",
+        untilReduction: "до снижения до",
+        activeSubs: "Активные подписки",
+        thisWeek: "за эту неделю",
+        monthlyMrr: "Регулярный доход (MRR)",
+        growth: "рост",
+        createNewBot: "Создать нового бота",
+        botAdminHint: "Добавьте вашего бота в приватный канал как администратора для начала работы.",
+        availablePayout: "Доступно к выводу",
+        withdrawFunds: "Вывести средства",
+        withdrawHint: "Минимальная сумма вывода $50. Выплаты осуществляются в USDT(TRC20) или TON.",
+        operationHistory: "История операций",
+        noHistory: "У вас пока нет истории операций.",
+        botSettings: "Настройки Бота",
+        welcomeMessage: "Приветственное сообщение",
+        welcomeHint: "Это сообщение увидит фанат, когда отправит /start вашему боту.",
+        subscriptionPlans: "Тарифы подписки (Telegram Stars)",
+        monthAccess_1: "1 Месяц доступа",
+        monthAccess_3: "3 Месяца (Скидка)",
+        themeHint: "Цвета и шрифты приложения автоматически адаптируются под вашу тему Telegram.",
+        saveSettings: "СОХРАНИТЬ",
+        settingsSaved: "✅ Настройки успешно сохранены!",
+        saveErrorSignature: "Ошибка сохранения: Неверная подпись WebApp",
+        networkError: "Ошибка сети",
+        loading: "Загрузка...",
+        revenuePrefix: "Ещё $",
+        stars: "звезд"
+    }
+};
+
+export type TranslationKey = keyof typeof translations['en'];
+export type TranslationDict = Record<TranslationKey, string>;
+
+export function getTranslation(langCode: string | undefined): TranslationDict {
+    // defaults to 'en'. If starting with 'ru', it's russian.
+    const code = langCode?.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+    return translations[code];
+}

@@ -25,7 +25,7 @@ export default function AppShell() {
     const t = useMemo(() => getTranslation(langCode), [langCode]);
 
     // We keep the central API URL here and pass it down
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://0fsaqk-ip-149-88-110-34.tunnelmole.net/api/bots";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tg-creator-saas.onrender.com/api/bots";
 
     if (!isMounted) return <div className="min-h-screen bg-[#1c242f] flex justify-center items-center text-white">Loading...</div>;
 

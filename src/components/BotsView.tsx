@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, ChevronRight, Bot, Key, Loader2, CheckCircle, ArrowLeft, ExternalLink } from 'lucide-react';
 import { SettingsView } from './SettingsView';
 import { TranslationDict } from '@/lib/translations';
+import { useRouter } from 'next/navigation';
 import WebApp from '@twa-dev/sdk';
 
 type WizardStep = 'token' | 'preview' | 'done';
@@ -18,6 +19,7 @@ interface BotData {
 
 export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }) {
     const isRu = t.isRu;
+    const router = useRouter();
     const [bots, setBots] = useState<BotData[]>([]);
     const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
     const [showWizard, setShowWizard] = useState(false);
@@ -76,6 +78,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                         setBots(prev => prev.filter(b => b.id !== selectedBotId));
                         setViewAnim('view-enter-back');
                         setSelectedBotId(null);
+                        router.refresh();
                     }}
                     t={t}
                 />
@@ -140,6 +143,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
             setToken('');
             setBotInfo(null);
             setError('');
+            router.refresh();
         }, 1200);
     };
 

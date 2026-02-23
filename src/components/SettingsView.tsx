@@ -172,6 +172,7 @@ function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (d
 
 export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL: string, botId: string, onBack: () => void, onDeleted: () => void, t: TranslationDict }) {
     const isRu = t.isRu;
+    const router = require('next/navigation').useRouter();
     const [welcomeText, setWelcomeText] = useState('');
     const [plans, setPlans] = useState<Plan[]>([]);
     const [paymentMethods, setPaymentMethods] = useState({ stars: true, crypto: true, card: true });
@@ -276,12 +277,13 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
 
             // Show animated toast instead of WebApp.showAlert
             setToast(t.settingsSaved);
+            setTimeout(() => router.refresh(), 500);
         } catch {
             setToast(t.settingsSaveError);
         } finally {
             setIsLoading(false);
         }
-    }, [API_URL, botId, welcomeText, initialWelcomeText, hasUnsavedPaymentMethods, paymentMethods, initialPaymentMethods, plans, t.settingsSaved, t.settingsSaveError]);
+    }, [API_URL, botId, welcomeText, initialWelcomeText, hasUnsavedPaymentMethods, paymentMethods, initialPaymentMethods, plans, t.settingsSaved, t.settingsSaveError, router]);
 
     // Wire Telegram native MainButton is removed per user request
     useEffect(() => {
@@ -298,7 +300,10 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         const res = await fetch(`${API_URL}/me/plans/${plan.id}`, {
                             method: 'DELETE', headers: { 'Authorization': `Bearer ${WebApp.initData}` }
                         });
-                        if (res.ok) setPlans(plans.filter((_, i) => i !== index));
+                        if (res.ok) {
+                            setPlans(plans.filter((_, i) => i !== index));
+                            router.refresh();
+                        }
                     } catch { }
                 }
             });
@@ -316,8 +321,10 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         const res = await fetch(`${API_URL}/me/bots/${botId}`, {
                             method: 'DELETE', headers: { 'Authorization': `Bearer ${WebApp.initData}` }
                         });
-                        if (res.ok) onDeleted();
-                        else WebApp.showAlert(isRu ? 'Ошибка удаления бота' : 'Error deleting bot');
+                        if (res.ok) {
+                            onDeleted();
+                            router.refresh();
+                        } else WebApp.showAlert(isRu ? 'Ошибка удаления бота' : 'Error deleting bot');
                     } catch { WebApp.showAlert(isRu ? 'Ошибка сети' : 'Network error'); }
                 }
             }

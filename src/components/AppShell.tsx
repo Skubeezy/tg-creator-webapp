@@ -35,6 +35,9 @@ export default function AppShell() {
         return () => clearTimeout(t);
     }, []);
 
+    // ─── Slide refs for overflow detection ───
+    const slideRefs = useRef<(HTMLDivElement | null)[]>([null, null, null]);
+
     // ─── Native (non-passive) touch listeners for swipe detection ───
     // React attaches passive listeners by default, meaning e.preventDefault() is
     // a no-op in onTouchMove. We must use native addEventListener with {passive:false}
@@ -55,9 +58,33 @@ export default function AppShell() {
             const dx = e.touches[0].clientX - startX.current;
             const dy = e.touches[0].clientY - startY.current;
 
-            // Determine direction on first significant movement (5px threshold)
+            // Determine swipe direction on first significant movement (5px threshold)
             if (isHorizontal.current === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-                isHorizontal.current = Math.abs(dx) > Math.abs(dy);
+                // If the active slide is scrollable and user is scrolling toward the overflow
+                // direction, treat as vertical — let native scroll handle it
+                const activeSlide = slideRefs.current[activeIndex];
+                const isScrollable = activeSlide
+                    ? activeSlide.scrollHeight > activeSlide.clientHeight
+                    : false;
+                const scrolledToTop = activeSlide ? activeSlide.scrollTop <= 0 : true;
+                const scrolledToBottom = activeSlide
+                    ? activeSlide.scrollTop + activeSlide.clientHeight >= activeSlide.scrollHeight - 1
+                    : true;
+
+                // Block horizontal swipe if: content is scrollable AND
+                // user is trying to scroll into un-exhausted content
+                const verticalScrollInProgress =
+                    isScrollable &&
+                    Math.abs(dy) > Math.abs(dx) * 0.6; // fairly vertical gesture
+
+                const scrollingDown = dy < 0 && !scrolledToBottom;
+                const scrollingUp = dy > 0 && !scrolledToTop;
+
+                if (verticalScrollInProgress && (scrollingDown || scrollingUp || (!scrolledToTop && !scrolledToBottom))) {
+                    isHorizontal.current = false;
+                } else {
+                    isHorizontal.current = Math.abs(dx) > Math.abs(dy);
+                }
             }
 
             // If vertical — do nothing, let the slide scroll naturally
@@ -97,7 +124,8 @@ export default function AppShell() {
             el.removeEventListener('touchmove', onMove);
             el.removeEventListener('touchend', onEnd);
         };
-    }, [trackRef]); // only re-run if ref changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [trackRef, activeIndex]); // re-run when activeIndex changes so slideRefs are current
 
     const t = useMemo(() => getTranslation(langCode), [langCode]);
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tg-creator-saas.onrender.com/api/bots";
@@ -137,13 +165,13 @@ export default function AppShell() {
                     transition: isDragging ? 'none' : undefined
                 }}
             >
-                <div className="carousel-slide">
+                <div className="carousel-slide" ref={el => { slideRefs.current[0] = el; }}>
                     <DashboardView API_URL={API_URL} t={t} userName={userName} />
                 </div>
-                <div className="carousel-slide">
+                <div className="carousel-slide" ref={el => { slideRefs.current[1] = el; }}>
                     <BotsView API_URL={API_URL} t={t} />
                 </div>
-                <div className="carousel-slide">
+                <div className="carousel-slide" ref={el => { slideRefs.current[2] = el; }}>
                     <PayoutsView API_URL={API_URL} t={t} />
                 </div>
             </div>

@@ -17,7 +17,7 @@ interface BotData {
 }
 
 export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }) {
-    const isRu = t.dashboard === 'Дашборд';
+    const isRu = t.isRu;
     const [bots, setBots] = useState<BotData[]>([]);
     const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
     const [showWizard, setShowWizard] = useState(false);
@@ -45,7 +45,13 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                                 username: b.username || '',
                                 photoUrl: (b.settings as any)?.photoUrl || null,
                                 plans: (b.subscriptionPlans || []).map((p: any) => ({
-                                    period: p.durationDays === 7 ? (isRu ? '1 Неделя' : '1 Week') : (isRu ? '1 Месяц' : '1 Month'),
+                                    period: p.durationDays === 7
+                                        ? (isRu ? '1 неделя' : '1 Week')
+                                        : p.durationDays === 30
+                                            ? (isRu ? '1 месяц' : '1 Month')
+                                            : p.durationDays === 90
+                                                ? (isRu ? '3 месяца' : '3 Months')
+                                                : `${p.durationDays} ${isRu ? 'дн.' : 'days'}`,
                                     price: Number(p.price)
                                 }))
                             })));
@@ -95,7 +101,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                 });
 
                 if (res.status === 401) {
-                    setError(isRu ? 'Ошибка авторизации. Перезапустите приложение.' : 'Auth error. Restart the app.');
+                    setError(t.authError);
                     return;
                 }
 
@@ -111,13 +117,13 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                     });
                     setWizardStep('preview');
                 } else {
-                    setError(data.message || data.error || `${isRu ? 'Ошибка' : 'Error'}: ${res.status}`);
+                    setError(data.message || data.error || `${t.networkError}: ${res.status}`);
                 }
             } else {
-                setError(isRu ? 'WebApp не инициализирован' : 'WebApp not initialized');
+                setError(t.webAppNotInit);
             }
         } catch (e: any) {
-            setError(`${isRu ? 'Ошибка сети' : 'Network error'}: ${e.message || 'unknown'}`);
+            setError(`${t.networkError}: ${e.message || 'unknown'}`);
         } finally {
             setIsLoading(false);
         }
@@ -160,9 +166,9 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                                         <Key size={20} strokeWidth={2} />
                                     </div>
                                     <div>
-                                        <p className="text-[15px] font-semibold">Bot Token</p>
+                                        <p className="text-[15px] font-semibold">{t.botTokenLabel}</p>
                                         <p className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>
-                                            {isRu ? 'Получите в @BotFather' : 'Get it from @BotFather'}
+                                            {t.botTokenHint}
                                         </p>
                                     </div>
                                 </div>
@@ -187,7 +193,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                             {error && <p className="text-[12px]" style={{ color: '#ff3b30' }}>{error}</p>}
                         </div>
                         <button className="action-btn" onClick={handleTokenSubmit} disabled={!token.trim() || isLoading}>
-                            {isLoading ? <Loader2 size={18} className="animate-spin" /> : (isRu ? 'Подключить бота' : 'Connect Bot')}
+                            {isLoading ? <Loader2 size={18} className="animate-spin" /> : t.connectBot}
                         </button>
                     </div>
                 )}
@@ -210,7 +216,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                             </div>
                         </div>
 
-                        <p className="section-header">{isRu ? 'Тарифы по умолчанию' : 'Default Plans'}</p>
+                        <p className="section-header">{t.defaultPlans}</p>
                         <div className="tg-card !p-0 overflow-hidden">
                             {botInfo.plans.map((plan, idx) => (
                                 <div key={idx}>
@@ -224,11 +230,11 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                         </div>
 
                         <p className="text-[12px] text-center" style={{ color: 'var(--tg-hint)' }}>
-                            {isRu ? 'Вы сможете изменить тарифы позже' : 'You can change plans later'}
+                            {t.changePlansLater}
                         </p>
 
                         <button className="action-btn" onClick={handleFinish}>
-                            {isRu ? 'Готово' : 'Done'}
+                            {t.done}
                         </button>
                     </div>
                 )}
@@ -239,7 +245,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                             style={{ background: 'rgba(52, 199, 89, 0.12)', color: '#34c759' }}>
                             <CheckCircle size={32} strokeWidth={1.8} />
                         </div>
-                        <p className="text-[17px] font-bold">{isRu ? 'Бот создан!' : 'Bot Created!'}</p>
+                        <p className="text-[17px] font-bold">{t.botCreated}</p>
                     </div>
                 )}
             </div>

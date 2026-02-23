@@ -41,7 +41,9 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
     const [showWelcome, setShowWelcome] = useState(false);
     const [showCommissionModal, setShowCommissionModal] = useState(false);
     const [animated, setAnimated] = useState(false);
-    const isRu = t.dashboard === 'Дашборд';
+    const [botsList, setBotsList] = useState<{ id: string; name: string; username: string }[]>([]);
+    const [selectedBroadcastBotId, setSelectedBroadcastBotId] = useState<string | null>(null);
+    const isRu = t.isRu;
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -80,6 +82,29 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
         fetchStats();
     }, [API_URL]);
 
+    // Fetch bots for broadcast selector
+    useEffect(() => {
+        const fetchBots = async () => {
+            if (typeof window === 'undefined' || !WebApp.initData) return;
+            try {
+                const res = await fetch(`${API_URL}/me/bots`, {
+                    headers: { 'Authorization': `Bearer ${WebApp.initData}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const list = (data.bots || []).map((b: any) => ({
+                        id: b.id,
+                        name: b.settings?.name || b.username || 'Bot',
+                        username: b.username || ''
+                    }));
+                    setBotsList(list);
+                    if (list.length > 0) setSelectedBroadcastBotId(list[0].id);
+                }
+            } catch { }
+        };
+        fetchBots();
+    }, [API_URL]);
+
     const dismissWelcome = () => {
         setShowWelcome(false);
         localStorage.setItem('fangate_welcome_seen', '1');
@@ -90,26 +115,23 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
     const nextTier = TIERS.find(t => t.rate < tier.rate);
 
     const handleSendBroadcast = async () => {
-        if (!broadcastText.trim() || !stats.botId) return;
+        if (!broadcastText.trim() || !selectedBroadcastBotId) return;
         setIsSending(true);
         try {
-            const res = await fetch(`${API_URL}/me/bots/${stats.botId}/broadcast`, {
+            const res = await fetch(`${API_URL}/me/bots/${selectedBroadcastBotId}/broadcast`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${WebApp.initData}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
                 body: JSON.stringify({ text: broadcastText })
             });
             const data = await res.json();
             if (data.success) {
-                WebApp.showAlert(`✅ Успешно отправлено: ${data.result.successCount} фанатам.`);
+                WebApp.showAlert(`✅ ${isRu ? `Отправлено ${data.result.successCount} фанатам` : `Sent to ${data.result.successCount} fans`}`);
                 setBroadcastText('');
             } else {
-                WebApp.showAlert('❌ Ошибка отправки: ' + data.error);
+                WebApp.showAlert(`❌ ${data.error || t.networkError}`);
             }
-        } catch (e) {
-            WebApp.showAlert('❌ Не удалось отправить рассылку');
+        } catch {
+            WebApp.showAlert(t.networkError);
         } finally {
             setIsSending(false);
         }
@@ -266,16 +288,41 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                         style={{ background: 'rgba(52, 199, 89, 0.12)', color: '#34c759' }}>
                         <Send size={16} strokeWidth={2.2} className="ml-0.5" />
                     </div>
-                    <span className="text-[15px] font-semibold">{isRu ? 'Массовая Рассылка' : 'Broadcast Message'}</span>
+                    <span className="text-[15px] font-semibold">{t.broadcastTitle}</span>
                 </div>
+
+                {/* Bot selector — always show when bots available */}
+                {botsList.length > 0 && (
+                    <div className="mb-3">
+                        <p className="text-[11px] mb-1.5" style={{ color: 'var(--tg-hint)' }}>
+                            {t.broadcastSendVia}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {botsList.map(bot => (
+                                <button
+                                    key={bot.id}
+                                    onClick={() => setSelectedBroadcastBotId(bot.id)}
+                                    className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all"
+                                    style={{
+                                        background: selectedBroadcastBotId === bot.id
+                                            ? 'var(--tg-accent)'
+                                            : 'color-mix(in srgb, var(--tg-hint) 12%, transparent)',
+                                        color: selectedBroadcastBotId === bot.id ? 'white' : 'var(--tg-hint)'
+                                    }}
+                                >
+                                    @{bot.username || bot.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <p className="text-[13px] mb-3 leading-snug" style={{ color: 'var(--tg-hint)' }}>
-                    {isRu
-                        ? 'Отправьте сообщение всем вашим фанатам, чтобы повысить продажи или сообщить новости.'
-                        : 'Send a message to all your fans to boost sales or share updates.'}
+                    {t.broadcastDesc}
                 </p>
                 <textarea
                     rows={3}
-                    placeholder={isRu ? "Введите текст сообщения..." : "Type your message..."}
+                    placeholder={t.broadcastPlaceholder}
                     className="w-full bg-transparent border border-[var(--tg-separator)] outline-none rounded-[12px] p-3 text-[14px] resize-none mb-3"
                     value={broadcastText}
                     onChange={e => setBroadcastText(e.target.value)}
@@ -283,13 +330,11 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                 />
                 <button
                     onClick={handleSendBroadcast}
-                    disabled={isSending || !broadcastText.trim()}
+                    disabled={isSending || !broadcastText.trim() || !selectedBroadcastBotId}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-[12px] text-white font-semibold text-[15px] disabled:opacity-50 transition-all"
                     style={{ backgroundColor: 'var(--tg-accent)' }}
                 >
-                    {isSending
-                        ? (isRu ? 'Отправка...' : 'Sending...')
-                        : (isRu ? 'Отправить Рассылку' : 'Send Broadcast')}
+                    {isSending ? t.broadcastSending : t.broadcastSend}
                 </button>
             </div>
 

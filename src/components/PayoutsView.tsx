@@ -12,7 +12,7 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
     const [destination, setDestination] = useState('');
     const [amount, setAmount] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const isRu = t.payouts === 'Выплаты';
+    const isRu = t.isRu;
 
     const fetchPayouts = async () => {
         try {
@@ -51,11 +51,11 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
     const handleRequest = async () => {
         const numAmount = Number(amount);
         if (numAmount <= 0 || numAmount > available) {
-            WebApp.showAlert(isRu ? 'Некорректная сумма' : 'Invalid amount');
+            WebApp.showAlert(t.invalidAmount);
             return;
         }
         if (!destination.trim()) {
-            WebApp.showAlert(isRu ? 'Введите адрес' : 'Enter destination address');
+            WebApp.showAlert(t.enterAddress);
             return;
         }
 
@@ -71,16 +71,16 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
             });
             const data = await res.json();
             if (data.success) {
-                WebApp.showAlert(isRu ? 'Заявка создана' : 'Request created');
+                WebApp.showAlert(t.payoutRequested);
                 setIsRequesting(false);
                 setAmount('');
                 setDestination('');
-                fetchPayouts(); // refresh
+                fetchPayouts();
             } else {
-                WebApp.showAlert('Error: ' + data.error);
+                WebApp.showAlert(t.networkError + ': ' + data.error);
             }
         } catch (e) {
-            WebApp.showAlert('Network error');
+            WebApp.showAlert(t.networkError);
         } finally {
             setIsLoading(false);
         }
@@ -98,7 +98,7 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
                         <Wallet size={20} strokeWidth={2.2} />
                     </div>
                     <div>
-                        <div className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>{t.availablePayout || 'Доступно к выводу:'}</div>
+                        <div className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>{t.availablePayout}</div>
                         <div className="text-[28px] font-bold" style={{ letterSpacing: '-0.03em' }}>${available.toLocaleString()}</div>
                     </div>
                 </div>
@@ -114,7 +114,7 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
                             {t.withdrawFunds}
                         </button>
                         <p className="text-[12px] text-center" style={{ color: 'var(--tg-hint)' }}>
-                            {t.withdrawHint || 'Вывод доступен от $50 на крипто-кошелек или карту.'}
+                            {t.withdrawHint}
                         </p>
                     </>
                 ) : (
@@ -122,7 +122,7 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
                         <div className="flex gap-2 w-full">
                             <input
                                 type="number"
-                                placeholder={isRu ? "Сумма ($)..." : "Amount ($)..."}
+                                placeholder={t.amountPlaceholder}
                                 className="settings-input flex-1 !mb-0"
                                 value={amount}
                                 onChange={e => setAmount(e.target.value)}
@@ -130,7 +130,7 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
                         </div>
                         <input
                             type="text"
-                            placeholder={isRu ? "Адрес USDT (TRC-20) / Номер Карты..." : "USDT Address / Card Number..."}
+                            placeholder={t.destinationPlaceholder}
                             className="settings-input !mb-0"
                             value={destination}
                             onChange={e => setDestination(e.target.value)}
@@ -141,7 +141,7 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
                                 style={{ background: 'var(--tg-secondary-bg)', color: 'var(--tg-text)' }}
                                 onClick={() => setIsRequesting(false)}
                             >
-                                {isRu ? 'Отмена' : 'Cancel'}
+                                {t.cancel}
                             </button>
                             <button
                                 className="flex-1 flex items-center justify-center py-2.5 rounded-[10px] text-[14px] font-medium text-white transition-opacity disabled:opacity-50"
@@ -177,7 +177,7 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
                                         {req.status === 'COMPLETED' ? <CheckCircle2 size={20} /> : <Clock size={20} />}
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[15px] font-medium">Withdrawal {req.currency}</span>
+                                        <span className="text-[15px] font-medium">{t.withdrawal} {req.currency}</span>
                                         <span className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>
                                             {new Date(req.createdAt).toLocaleDateString()}
                                         </span>
@@ -187,7 +187,7 @@ export function PayoutsView({ API_URL, t }: { API_URL: string, t: TranslationDic
                                     <span className="text-[15px] font-bold block">-${Number(req.amount).toLocaleString()}</span>
                                     <span className="text-[11px] uppercase font-bold tracking-wider"
                                         style={{ color: req.status === 'COMPLETED' ? '#34c759' : '#ff9500' }}>
-                                        {req.status}
+                                        {req.status === 'COMPLETED' ? (isRu ? 'Выполнено' : 'Done') : (isRu ? 'В обработке' : 'Pending')}
                                     </span>
                                 </div>
                             </div>

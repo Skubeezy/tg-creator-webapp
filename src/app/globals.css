@@ -5,35 +5,35 @@
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Design Tokens ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root {
   --tg-bg: var(--tg-theme-bg-color, #ffffff);
-  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f7);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
   --tg-text: var(--tg-theme-text-color, #000000);
-  --tg-hint: var(--tg-theme-hint-color, #8e8e93);
-  --tg-accent: var(--tg-theme-button-color, #3390ec);
+  --tg-hint: var(--tg-theme-hint-color, #71717a);
+  --tg-accent: var(--tg-theme-button-color, #2563eb);
   --tg-accent-text: var(--tg-theme-button-text-color, #ffffff);
-  --tg-link: var(--tg-theme-link-color, #3390ec);
-  --tg-separator: rgba(60, 60, 67, 0.09);
+  --tg-link: var(--tg-theme-link-color, #2563eb);
+  --tg-separator: rgba(0, 0, 0, 0.08);
 
-  --glass-bg: rgba(255, 255, 255, 0.80);
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-shadow: 0 2px 20px rgba(0, 0, 0, 0.06), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02) inset;
 
-  --radius-card: 20px;
-  --radius-btn: 16px;
-  --radius-sm: 12px;
+  --radius-card: 24px;
+  --radius-btn: 18px;
+  --radius-sm: 14px;
 
-  --dur-fast: 0.12s;
-  --dur-med: 0.22s;
-  --dur-spring: 0.35s;
-  --ease-spring: cubic-bezier(0.25, 1.25, 0.5, 1);
-  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 0.15s;
+  --dur-med: 0.25s;
+  --dur-spring: 0.4s;
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --tg-separator: rgba(255, 255, 255, 0.09);
-    --glass-bg: rgba(30, 30, 34, 0.85);
-    --glass-border: rgba(255, 255, 255, 0.07);
-    --glass-shadow: 0 2px 24px rgba(0, 0, 0, 0.40), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+    --tg-separator: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(24, 24, 27, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   }
 }
 
@@ -110,8 +110,8 @@ textarea {
 }
 
 .carousel-slide {
-  min-width: 100%;
-  width: 100%;
+  min-width: 100vw;
+  width: 100vw;
   flex-shrink: 0;
   padding: 16px;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);

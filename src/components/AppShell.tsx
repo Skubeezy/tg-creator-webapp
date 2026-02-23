@@ -16,6 +16,9 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
     const isSaving = state === 'saving';
     const isSuccess = state === 'success';
 
+    // Track if we should show the checkmark (only when success)
+    const showCheck = isSuccess;
+
     return (
         <button
             onClick={onClick}
@@ -34,26 +37,22 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                 position: 'relative',
                 overflow: 'hidden',
                 pointerEvents: visible ? 'auto' : 'none',
-                // Glassmorphism + Telegram accent
-                background: isSuccess
-                    ? 'linear-gradient(135deg, #30d158, #25a244)'
-                    : 'linear-gradient(135deg, color-mix(in srgb, var(--tg-accent, #3390ec) 90%, #fff 10%), var(--tg-accent, #3390ec))',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                boxShadow: isSuccess
-                    ? '0 4px 20px rgba(48,209,88,0.55), 0 0 0 1px rgba(48,209,88,0.3)'
-                    : '0 4px 20px color-mix(in srgb, var(--tg-accent, #3390ec) 55%, transparent), 0 0 0 1px color-mix(in srgb, var(--tg-accent, #3390ec) 40%, transparent)',
+                // Glassmorphism matching tab-bar-inner
+                background: 'var(--glass-bg)',
+                backdropFilter: 'blur(40px) saturate(200%)',
+                WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+                boxShadow: '0 0 0 0.5px rgba(255, 255, 255, 0.07), 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
                 // Appear/disappear
                 opacity: visible ? 1 : 0,
                 transform: visible ? 'scale(1) translateX(0)' : 'scale(0.6) translateX(20px)',
                 transition: 'opacity 0.35s cubic-bezier(0.22,0.61,0.36,1), transform 0.35s cubic-bezier(0.22,0.61,0.36,1), background 0.4s ease, box-shadow 0.4s ease',
-                color: 'white',
+                color: 'var(--tg-text, white)',
             }}
         >
             {/* Sheen overlay */}
             <div style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, transparent 60%)',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%)',
                 pointerEvents: 'none',
             }} />
 
@@ -61,7 +60,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
             <svg
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="currentColor"
+                stroke="var(--tg-accent, #3390ec)" /* Tint icon with accent color */
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -69,7 +68,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                     width: 22,
                     height: 22,
                     position: 'absolute',
-                    opacity: isSuccess ? 0 : 1,
+                    opacity: showCheck ? 0 : 1,
                     transform: isSaving ? 'scale(0.85)' : 'scale(1)',
                     animation: isSaving ? 'saveSpin 0.9s linear infinite' : 'none',
                     transition: 'opacity 0.25s ease, transform 0.2s ease',
@@ -87,7 +86,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
             <svg
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="currentColor"
+                stroke="var(--tg-accent, #3390ec)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -95,8 +94,8 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                     width: 22,
                     height: 22,
                     position: 'absolute',
-                    opacity: isSuccess ? 1 : 0,
-                    transform: isSuccess ? 'scale(1)' : 'scale(0.5)',
+                    opacity: showCheck ? 1 : 0,
+                    transform: showCheck ? 'scale(1)' : 'scale(0.5)',
                     transition: 'opacity 0.3s ease 0.05s, transform 0.35s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
                 }}
             >
@@ -104,7 +103,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                     points="4 13 9 18 20 7"
                     style={{
                         strokeDasharray: 25,
-                        strokeDashoffset: isSuccess ? 0 : 25,
+                        strokeDashoffset: showCheck ? 0 : 25,
                         transition: 'stroke-dashoffset 0.4s ease 0.1s',
                     }}
                 />

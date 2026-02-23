@@ -367,71 +367,89 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                 </button>
             </div>
 
-            {/* ─── Commission Modal ─── */}
-            {showCommissionModal && (
-                <div className="modal-backdrop" onClick={() => setShowCommissionModal(false)}>
-                    <div className="modal-sheet" onClick={e => e.stopPropagation()}>
-                        <div className="modal-handle" />
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-[18px] font-bold">{t.commissionLabel}</h2>
+            {/* ─── Commission Modal (Centered Portal) ─── */}
+            {showCommissionModal && typeof document !== 'undefined' && require('react-dom').createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                    onClick={() => setShowCommissionModal(false)}>
+                    <div className="w-full max-w-[340px] bg-[var(--tg-bg)] rounded-[24px] p-6 shadow-2xl relative overflow-hidden"
+                        style={{ animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)' }}
+                        onClick={e => e.stopPropagation()}>
+
+                        {/* Decorative Background Blur */}
+                        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none"
+                            style={{ backgroundColor: 'var(--tg-accent)' }} />
+
+                        <div className="flex items-center justify-between mb-4 relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                                    style={{ background: 'color-mix(in srgb, var(--tg-accent) 15%, transparent)', color: 'var(--tg-accent)' }}>
+                                    <Zap size={20} strokeWidth={2.5} />
+                                </div>
+                                <h2 className="text-[19px] font-bold tracking-tight">{t.commissionLabel}</h2>
+                            </div>
                             <button onClick={() => setShowCommissionModal(false)}
-                                className="w-7 h-7 rounded-full flex items-center justify-center"
+                                className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity active:opacity-60"
                                 style={{ background: 'var(--tg-separator)' }}>
-                                <X size={14} style={{ color: 'var(--tg-hint)' }} />
+                                <X size={16} style={{ color: 'var(--tg-hint)' }} />
                             </button>
                         </div>
-                        <p className="text-[13px] mb-4" style={{ color: 'var(--tg-hint)' }}>
+
+                        <p className="text-[14px] mb-5 leading-relaxed relative z-10" style={{ color: 'var(--tg-hint)' }}>
                             {isRu
-                                ? 'Чем больше вы зарабатываете, тем ниже комиссия платформы. Каждый уровень открывается автоматически.'
-                                : 'The more you earn, the lower the platform commission. Each tier unlocks automatically.'}
+                                ? 'Чем больше вы зарабатываете, тем ниже комиссия платформы. Уровни открываются автоматически.'
+                                : 'The more you earn, the lower the platform commission. Tiers unlock automatically.'}
                         </p>
-                        <div className="tg-card !p-0 overflow-hidden">
+
+                        <div className="flex flex-col gap-2 relative z-10">
                             {TIERS.map((tr, idx) => {
                                 const isActive = tier.rate === tr.rate;
                                 const isPassed = stats.lifetimeRevenue >= tr.max;
                                 return (
-                                    <div key={idx}>
-                                        <div className="list-row justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold"
-                                                    style={{
-                                                        backgroundColor: isActive
-                                                            ? 'var(--tg-accent)'
-                                                            : isPassed
-                                                                ? 'rgba(52, 199, 89, 0.12)'
-                                                                : 'var(--tg-separator)',
-                                                        color: isActive
-                                                            ? 'var(--tg-accent-text)'
-                                                            : isPassed
-                                                                ? '#34c759'
-                                                                : 'var(--tg-hint)'
-                                                    }}>
-                                                    {tr.rate}%
-                                                </div>
-                                                <div>
-                                                    <span className={`text-[14px] ${isActive ? 'font-bold' : 'font-medium'}`}>
-                                                        {tr.max === Infinity
-                                                            ? `$${tr.min.toLocaleString()}+`
-                                                            : `$${tr.min.toLocaleString()} — $${tr.max.toLocaleString()}`}
-                                                    </span>
-                                                    {isActive && (
-                                                        <span className="text-[11px] block" style={{ color: 'var(--tg-accent)' }}>
-                                                            {isRu ? 'Текущий уровень' : 'Current tier'}
-                                                        </span>
-                                                    )}
-                                                </div>
+                                    <div key={idx} className="flex items-center justify-between p-3 rounded-[16px] transition-all"
+                                        style={{
+                                            backgroundColor: isActive ? 'var(--tg-accent)' : 'transparent',
+                                            border: isActive ? 'none' : '1px solid var(--tg-separator)'
+                                        }}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[13px] font-bold"
+                                                style={{
+                                                    backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : isPassed ? 'rgba(52, 199, 89, 0.15)' : 'color-mix(in srgb, var(--tg-hint) 10%, transparent)',
+                                                    color: isActive ? '#fff' : isPassed ? '#34c759' : 'var(--tg-hint)'
+                                                }}>
+                                                {tr.rate}%
                                             </div>
-                                            {isPassed && (
-                                                <span className="text-[11px] font-semibold" style={{ color: '#34c759' }}>✓</span>
-                                            )}
+                                            <div className="flex flex-col">
+                                                <span className={`text-[14px] ${isActive ? 'font-bold text-white' : 'font-semibold text-[var(--tg-text)]'}`}>
+                                                    {tr.max === Infinity
+                                                        ? `$${tr.min.toLocaleString()}+`
+                                                        : `$${tr.min.toLocaleString()} — $${tr.max.toLocaleString()}`}
+                                                </span>
+                                                {isActive && (
+                                                    <span className="text-[11px] text-white/80 font-medium tracking-wide">
+                                                        {isRu ? 'ТЕКУЩИЙ УРОВЕНЬ' : 'CURRENT TIER'}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
-                                        {idx < TIERS.length - 1 && <div className="list-separator" />}
+                                        {isPassed && !isActive && (
+                                            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.15)' }}>
+                                                <span className="text-[12px] font-bold" style={{ color: '#34c759' }}>✓</span>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
                         </div>
+
+                        <button className="w-full mt-5 py-3.5 rounded-[14px] font-bold text-[15px] transition-transform active:scale-95"
+                            style={{ backgroundColor: 'var(--tg-separator)', color: 'var(--tg-text)' }}
+                            onClick={() => setShowCommissionModal(false)}>
+                            {isRu ? 'Понятно' : 'Got it'}
+                        </button>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

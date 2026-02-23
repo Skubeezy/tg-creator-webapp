@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { LayoutDashboard, Bot, Wallet } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { DashboardView } from '@/components/DashboardView';
@@ -13,8 +13,8 @@ export default function AppShell() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [langCode, setLangCode] = useState<string>('en');
     const [userName, setUserName] = useState<string>('Creator');
-
-    const trackRef = useRef<HTMLDivElement>(null);
+    const [touchStartX, setTouchStartX] = useState<number | null>(null);
+    const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -35,15 +35,31 @@ export default function AppShell() {
         return () => clearTimeout(t);
     }, []);
 
-    const handleScroll = useCallback(() => {
-        if (!trackRef.current) return;
-        const scrollLeft = trackRef.current.scrollLeft;
-        const width = trackRef.current.clientWidth;
-        const index = Math.round(scrollLeft / width);
-        if (index !== activeIndex) {
-            setActiveIndex(index);
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchStartX(e.targetTouches[0].clientX);
+        setTouchStartY(e.targetTouches[0].clientY);
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStartX === null || touchStartY === null) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+
+        const deltaX = touchStartX - touchEndX;
+        const deltaY = touchStartY - touchEndY;
+
+        // Ensure it's mostly a horizontal swipe
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 40) {
+            if (deltaX > 0 && activeIndex < 2) {
+                setActiveIndex(activeIndex + 1);
+            } else if (deltaX < 0 && activeIndex > 0) {
+                setActiveIndex(activeIndex - 1);
+            }
         }
-    }, [activeIndex]);
+
+        setTouchStartX(null);
+        setTouchStartY(null);
+    };
 
     const t = useMemo(() => getTranslation(langCode), [langCode]);
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tg-creator-saas.onrender.com/api/bots";
@@ -51,9 +67,6 @@ export default function AppShell() {
 
     const handleTabChange = useCallback((idx: number) => {
         setActiveIndex(idx);
-        if (trackRef.current) {
-            trackRef.current.scrollTo({ left: idx * window.innerWidth, behavior: 'smooth' });
-        }
     }, []);
 
     if (!isMounted) {
@@ -71,24 +84,21 @@ export default function AppShell() {
     return (
         <main className="app-shell">
             <div
-                ref={trackRef}
                 className="carousel-track hide-scrollbar"
-                onScroll={handleScroll}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
                 style={{
-                    overflowX: 'auto',
-                    overflowY: 'hidden',
-                    scrollSnapType: 'x mandatory',
-                    scrollbarWidth: 'none',
-                    WebkitOverflowScrolling: 'touch',
+                    transform: `translateX(-${activeIndex * 100}vw)`,
+                    width: '300vw'
                 }}
             >
-                <div className="carousel-slide" style={{ minWidth: '100vw', width: '100vw', scrollSnapAlign: 'start' }}>
+                <div className="carousel-slide">
                     <DashboardView API_URL={API_URL} t={t} userName={userName} />
                 </div>
-                <div className="carousel-slide" style={{ minWidth: '100vw', width: '100vw', scrollSnapAlign: 'start' }}>
+                <div className="carousel-slide">
                     <BotsView API_URL={API_URL} t={t} />
                 </div>
-                <div className="carousel-slide" style={{ minWidth: '100vw', width: '100vw', scrollSnapAlign: 'start' }}>
+                <div className="carousel-slide">
                     <PayoutsView API_URL={API_URL} t={t} />
                 </div>
             </div>

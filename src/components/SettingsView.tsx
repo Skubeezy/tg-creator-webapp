@@ -445,7 +445,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
             </section>
 
             {/* Subscription Plans */}
-            <section style={S.section}>
+            <section style={{ ...S.section, zIndex: 10 }}>
                 <div style={S.header}>
                     <div style={S.iconBox('#34c759', 'rgba(52,199,89,0.12)')}>
                         <Tag size={16} strokeWidth={2} />

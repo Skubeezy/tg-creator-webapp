@@ -24,66 +24,65 @@ const DURATION_OPTIONS = [
     { days: 365, labelRu: '1 год', labelEn: '1 year' },
 ];
 
-// ─── Toast (glassmorphism, slide-in from right) ───
+// ─── Toast (slides up from bottom, Telegram style, fixed above tab bar) ───
 function Toast({ message, type = 'success', onDone }: { message: string; type?: 'success' | 'error'; onDone: () => void }) {
     const [phase, setPhase] = useState<'in' | 'hold' | 'out'>('in');
 
     useEffect(() => {
         const t1 = setTimeout(() => setPhase('hold'), 50);
-        const t2 = setTimeout(() => setPhase('out'), 2500);
-        const t3 = setTimeout(() => onDone(), 3000);
+        const t2 = setTimeout(() => setPhase('out'), 2800);
+        const t3 = setTimeout(() => onDone(), 3350);
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }, [onDone]);
 
-    const translateX =
-        phase === 'in' ? 'translateX(120%)' :
-            phase === 'out' ? 'translateX(120%)' :
-                'translateX(0)';
+    const translateY =
+        phase === 'in' ? 'translateY(100px)' :
+            phase === 'out' ? 'translateY(100px)' :
+                'translateY(0)';
 
     const opacity = phase === 'hold' ? 1 : 0;
     const accent = type === 'error' ? '#ff3b30' : '#30d158';
+    const icon = type === 'error' ? '✕' : '✓';
 
     return (
         <div style={{
             position: 'fixed',
-            top: 16,
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 160px)',
+            left: 16,
             right: 16,
-            transform: translateX,
+            transform: translateY,
             opacity,
-            transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease',
-            zIndex: 99999,
+            transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
+            zIndex: 99998,
             pointerEvents: 'none',
-            maxWidth: 'calc(100vw - 32px)',
         }}>
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                padding: '12px 18px',
+                gap: 12,
+                padding: '13px 16px',
                 borderRadius: 18,
-                background: 'rgba(18,18,24,0.82)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
+                background: 'rgba(18,18,24,0.88)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
                 color: '#fff',
                 fontSize: 14,
                 fontWeight: 600,
-                whiteSpace: 'nowrap',
-                boxShadow: `0 4px 24px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.1)`,
+                boxShadow: `0 8px 32px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.08)`,
                 border: `1px solid rgba(255,255,255,0.10)`,
                 letterSpacing: '-0.01em',
             }}>
                 <div style={{
-                    width: 22, height: 22, borderRadius: '50%',
+                    width: 26, height: 26, borderRadius: '50%',
                     background: accent,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
-                    boxShadow: `0 0 8px ${accent}66`,
+                    boxShadow: `0 0 10px ${accent}88`,
+                    fontSize: 13, fontWeight: 800, color: 'white',
                 }}>
-                    {type === 'error'
-                        ? <span style={{ fontSize: 12, fontWeight: 800, color: 'white' }}>✕</span>
-                        : <Check size={12} color="white" strokeWidth={3} />}
+                    {icon}
                 </div>
-                {message}
+                <span style={{ flex: 1 }}>{message}</span>
             </div>
         </div>
     );
@@ -377,40 +376,66 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', paddingBottom: 96 }}>
-            {/* Toast — fixed to viewport top-right, never scrolls */}
+            {/* Toast — slides up from bottom, fixed, never scrolls */}
             {toast && <Toast message={toast} type={toastType} onDone={() => setToast(null)} />}
 
-            {/* Fixed FAB Save Button — always visible even when scrolled to bottom */}
-            {hasUnsavedChanges && (
-                <button
-                    onClick={handleSaveAll}
-                    disabled={isLoading}
-                    title={isRu ? 'Сохранить' : 'Save'}
-                    style={{
-                        position: 'fixed',
-                        bottom: 24,
-                        right: 20,
-                        width: 52,
-                        height: 52,
-                        borderRadius: '50%',
-                        border: 'none',
-                        cursor: 'pointer',
-                        background: 'var(--tg-accent, #3390ec)',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 9999,
-                        boxShadow: '0 4px 20px rgba(51,144,236,0.55), 0 2px 8px rgba(0,0,0,0.18)',
-                        transition: 'transform 0.15s, opacity 0.15s',
-                        transform: isLoading ? 'scale(0.88)' : 'scale(1)',
-                        opacity: isLoading ? 0.8 : 1,
-                        animation: 'fabPopIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                    }}
-                >
-                    {isLoading ? <Loader2 size={22} className="animate-spin" /> : <Save size={22} />}
-                </button>
-            )}
+            {/* Bottom Save Bar — fixed above the tab-bar, slides up when there are unsaved changes */}
+            <div style={{
+                position: 'fixed',
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
+                left: 12,
+                right: 12,
+                zIndex: 9997,
+                transform: hasUnsavedChanges ? 'translateY(0)' : 'translateY(calc(100% + 120px))',
+                opacity: hasUnsavedChanges ? 1 : 0,
+                transition: 'transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.25s ease',
+                pointerEvents: hasUnsavedChanges ? 'auto' : 'none',
+            }}>
+                <div style={{
+                    padding: '10px 12px',
+                    borderRadius: 20,
+                    background: 'rgba(18,18,24,0.88)',
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                }}>
+                    <div style={{ flex: 1, paddingLeft: 4 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)', lineHeight: 1.3 }}>
+                            {isRu ? 'Есть несохранённые изменения' : 'You have unsaved changes'}
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleSaveAll}
+                        disabled={isLoading}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '11px 20px',
+                            borderRadius: 14,
+                            border: 'none',
+                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            background: 'var(--tg-accent, #3390ec)',
+                            color: 'white',
+                            fontSize: 14,
+                            fontWeight: 700,
+                            transition: 'transform 0.15s, opacity 0.15s',
+                            transform: isLoading ? 'scale(0.93)' : 'scale(1)',
+                            opacity: isLoading ? 0.7 : 1,
+                            letterSpacing: '-0.01em',
+                        }}
+                    >
+                        {isLoading
+                            ? <Loader2 size={16} className="animate-spin" />
+                            : <Save size={16} />}
+                        {isRu ? 'Сохранить' : 'Save'}
+                    </button>
+                </div>
+            </div>
 
             {/* Header */}
             <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

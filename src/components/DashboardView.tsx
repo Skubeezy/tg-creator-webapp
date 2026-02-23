@@ -46,6 +46,17 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
     const [botsList, setBotsList] = useState<{ id: string; name: string; username: string }[]>([]);
     const [selectedBroadcastBotId, setSelectedBroadcastBotId] = useState<string | null>(null);
     const isRu = t.isRu;
+    const [creatorPhotoUrl, setCreatorPhotoUrl] = useState<string | null>(null);
+    const [creatorInitials, setCreatorInitials] = useState<string>('?');
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const user = (window as any)?.Telegram?.WebApp?.initDataUnsafe?.user;
+            if (user?.photo_url) setCreatorPhotoUrl(user.photo_url);
+            const name = user?.first_name || user?.username || '';
+            if (name) setCreatorInitials(name.substring(0, 2).toUpperCase());
+        }
+    }, []);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -191,9 +202,23 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
             {/* Header */}
             <header className="flex items-center justify-between px-1 py-2">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-[12px] flex items-center justify-center text-white"
-                        style={{ backgroundColor: 'var(--tg-accent)' }}>
-                        <Bot size={22} strokeWidth={2.2} />
+                    {/* Creator avatar — real Telegram photo if available, else initials */}
+                    <div className="relative w-10 h-10 rounded-[12px] overflow-hidden flex-shrink-0"
+                        style={{ background: 'color-mix(in srgb, var(--tg-accent) 15%, transparent)' }}>
+                        {creatorPhotoUrl ? (
+                            <img
+                                src={creatorPhotoUrl}
+                                alt={userName}
+                                className="w-full h-full object-cover"
+                                style={{ borderRadius: 12 }}
+                                onError={() => setCreatorPhotoUrl(null)}
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[15px] font-bold"
+                                style={{ color: 'var(--tg-accent)' }}>
+                                {creatorInitials}
+                            </div>
+                        )}
                     </div>
                     <div>
                         <h1 className="text-[17px] font-semibold leading-tight" style={{ letterSpacing: '-0.02em' }}>{userName}</h1>

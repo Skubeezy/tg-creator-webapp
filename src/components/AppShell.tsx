@@ -12,7 +12,7 @@ export default function AppShell() {
     const [isMounted, setIsMounted] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const [langCode, setLangCode] = useState<string>('en');
-    const [userName, setUserName] = useState<string>('Creator');
+    const [userName, setUserName] = useState<string>('');
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
     const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
@@ -20,7 +20,9 @@ export default function AppShell() {
         if (typeof window !== 'undefined') {
             const user = WebApp.initDataUnsafe?.user;
             if (user?.language_code) setLangCode(user.language_code);
+            // Use first_name, then username — never the hard-coded fallback 'Creator'
             if (user?.first_name) setUserName(user.first_name);
+            else if (user?.username) setUserName(`@${user.username}`);
 
             // Override native swipe back on iOS Telegram
             try {

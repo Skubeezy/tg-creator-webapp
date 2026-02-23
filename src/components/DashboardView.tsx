@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import WebApp from '@twa-dev/sdk';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { TranslationDict } from '@/lib/translations';
+import { LegalModal } from '@/components/LegalModal';
 
 const TIERS = [
     { rate: 15, min: 0, max: 500 },
@@ -38,6 +39,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
     const [chartData, setChartData] = useState<any[]>([]);
     const [broadcastText, setBroadcastText] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
     const [showWelcome, setShowWelcome] = useState(false);
     const [showCommissionModal, setShowCommissionModal] = useState(false);
     const [animated, setAnimated] = useState(false);
@@ -329,13 +331,25 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                     {t.broadcastDesc}
                 </p>
                 <textarea
-                    rows={3}
+                    rows={4}
                     placeholder={t.broadcastPlaceholder}
-                    className="w-full bg-transparent border border-[var(--tg-separator)] outline-none rounded-[12px] p-3 text-[14px] resize-none mb-3"
+                    className="w-full bg-transparent border border-[var(--tg-separator)] outline-none rounded-[12px] p-3 text-[14px] resize-none mb-1"
                     value={broadcastText}
                     onChange={e => setBroadcastText(e.target.value)}
+                    onFocus={() => {
+                        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                        document.body.style.paddingBottom = '40vh';
+                    }}
+                    onBlur={() => {
+                        document.body.style.paddingBottom = '0px';
+                    }}
                     style={{ color: 'var(--tg-text)' }}
                 />
+                <p className="text-[11px] mb-4 text-center" style={{ color: 'var(--tg-hint)', opacity: 0.8 }}>
+                    <Sparkles size={11} className="inline mr-1 relative -top-[1px]" />
+                    {t.autoTranslateHint}
+                </p>
+
                 <button
                     onClick={handleSendBroadcast}
                     disabled={isSending || !broadcastText.trim() || !selectedBroadcastBotId}
@@ -459,6 +473,28 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                 </div>,
                 document.body
             )}
+
+            {/* Footer Links */}
+            <div className="flex items-center justify-center gap-4 mt-2 mb-4 opacity-70">
+                <button
+                    onClick={() => setLegalModal('terms')}
+                    className="text-[12px] font-medium"
+                    style={{ color: 'var(--tg-link, var(--tg-accent))' }}
+                >
+                    {t.termsOfService}
+                </button>
+                <div className="w-[3px] h-[3px] rounded-full" style={{ background: 'var(--tg-hint)' }} />
+                <button
+                    onClick={() => setLegalModal('privacy')}
+                    className="text-[12px] font-medium"
+                    style={{ color: 'var(--tg-link, var(--tg-accent))' }}
+                >
+                    {t.privacyPolicy}
+                </button>
+            </div>
+
+            {/* Legal Modal Portal */}
+            <LegalModal type={legalModal} onClose={() => setLegalModal(null)} t={t} />
         </div>
     );
 }

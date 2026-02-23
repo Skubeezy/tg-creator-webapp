@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ArrowLeft, Tag, Trash2, PlusCircle, Save, Loader2, Wallet, Check, ChevronDown, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Tag, Trash2, PlusCircle, Save, Loader2, Wallet, Check, ChevronDown, MessageSquare, Sparkles } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { TranslationDict } from '@/lib/translations';
 
@@ -384,9 +384,20 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         }}
                         value={welcomeText}
                         onChange={e => setWelcomeText(e.target.value)}
-                        onFocus={e => (e.target.style.borderColor = 'var(--tg-accent)')}
-                        onBlur={e => (e.target.style.borderColor = 'color-mix(in srgb, var(--tg-hint) 12%, transparent)')}
+                        onFocus={e => {
+                            e.target.style.borderColor = 'var(--tg-accent)';
+                            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                            document.body.style.paddingBottom = '40vh';
+                        }}
+                        onBlur={e => {
+                            e.target.style.borderColor = 'color-mix(in srgb, var(--tg-hint) 12%, transparent)';
+                            document.body.style.paddingBottom = '0px';
+                        }}
                     />
+                    <p style={{ fontSize: 11, color: 'var(--tg-hint)', opacity: 0.8, marginTop: 8, textAlign: 'center' }}>
+                        <Sparkles size={11} style={{ display: 'inline', marginRight: 4, position: 'relative', top: '-1px' }} />
+                        {t.autoTranslateHint}
+                    </p>
                 </div>
             </section>
 

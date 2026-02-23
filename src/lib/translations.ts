@@ -82,6 +82,11 @@ export const translations = {
         cancel: "Cancel",
         confirm: "Confirm",
         withdrawal: "Withdrawal",
+
+        autoTranslateHint: "Text will be automatically translated into the user's language.",
+        termsOfService: "Terms of Service",
+        privacyPolicy: "Privacy Policy",
+        infoMenu: "ℹ️ About"
     },
     ru: {
         dashboard: "Дашборд",
@@ -166,6 +171,11 @@ export const translations = {
         cancel: "Отмена",
         confirm: "Подтвердить",
         withdrawal: "Вывод",
+
+        autoTranslateHint: "Текст будет автоматически переведен на язык пользователя.",
+        termsOfService: "Пользовательское соглашение",
+        privacyPolicy: "Политика конфиденциальности",
+        infoMenu: "ℹ️ Информация"
     }
 };
 

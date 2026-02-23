@@ -75,27 +75,24 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
     );
 }
 
-// ─── Custom Duration Picker ───
+// ─── Custom Duration Picker (Bottom Sheet) ───
 function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (days: number) => void; isRu: boolean }) {
     const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
     const selected = DURATION_OPTIONS.find(o => o.days === value) || DURATION_OPTIONS[2];
 
+    // Lock body scroll when modal is open
     useEffect(() => {
-        if (!open) return;
-        const handler = (e: TouchEvent | MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
-        document.addEventListener('touchstart', handler);
-        document.addEventListener('mousedown', handler);
-        return () => { document.removeEventListener('touchstart', handler); document.removeEventListener('mousedown', handler); };
+        if (open) {
+            document.body.style.overflow = 'hidden';
+            return () => { document.body.style.overflow = ''; };
+        }
     }, [open]);
 
     return (
-        <div ref={ref} style={{ position: 'relative', flex: 1 }}>
+        <div style={{ flex: 1 }}>
             <button
                 type="button"
-                onClick={() => setOpen(o => !o)}
+                onClick={() => setOpen(true)}
                 style={{
                     width: '100%',
                     display: 'flex',
@@ -110,65 +107,61 @@ function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (d
                     fontWeight: 600,
                     fontFamily: 'inherit',
                     cursor: 'pointer',
-                    transition: 'background 0.15s',
+                    transition: 'background 0.15s, transform 0.1s',
                 }}
+                onPointerDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
+                onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             >
                 <span>{isRu ? selected.labelRu : selected.labelEn}</span>
-                <ChevronDown size={16} style={{
-                    color: 'var(--tg-hint)',
-                    transform: open ? 'rotate(180deg)' : 'rotate(0)',
-                    transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)'
-                }} />
+                <ChevronDown size={16} style={{ color: 'var(--tg-hint)' }} />
             </button>
 
-            {/* Dropdown */}
-            <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 8px)',
-                left: 0,
-                right: 0,
-                zIndex: 99999,
-                borderRadius: 16,
-                padding: '4px',
-                background: 'var(--tg-bg, #fff)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 0 0 1px color-mix(in srgb, var(--tg-hint) 10%, transparent)',
-                transformOrigin: 'top center',
-                transform: open ? 'scaleY(1) translateY(0)' : 'scaleY(0.95) translateY(-4px)',
-                opacity: open ? 1 : 0,
-                pointerEvents: open ? 'all' : 'none',
-                transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.1), opacity 0.15s ease',
-            }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {DURATION_OPTIONS.map((opt, idx) => (
-                        <button
-                            key={opt.days}
-                            type="button"
-                            onClick={() => { onChange(opt.days); setOpen(false); }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '12px 14px',
-                                borderRadius: 12,
-                                background: opt.days === value ? 'color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 12%, transparent)' : 'transparent',
-                                color: opt.days === value ? 'var(--tg-theme-button-color, #3390ec)' : 'var(--tg-text)',
-                                fontSize: 14,
-                                fontWeight: opt.days === value ? 700 : 500,
-                                fontFamily: 'inherit',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                border: 'none',
-                                outline: 'none',
-                                transition: 'background 0.1s ease',
-                            }}
-                        >
-                            {isRu ? opt.labelRu : opt.labelEn}
-                            {opt.days === value && <Check size={16} strokeWidth={3} />}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            {/* Bottom Sheet Modal */}
+            {open && typeof document !== 'undefined' && require('react-dom').createPortal(
+                <div className="fixed inset-0 z-[99999] flex flex-col justify-end bg-black/40 backdrop-blur-[2px]"
+                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                    onClick={() => setOpen(false)}>
+
+                    {/* Sheet Content */}
+                    <div className="w-full bg-[var(--tg-bg)] rounded-t-[28px] p-5 pb-8 shadow-2xl relative"
+                        style={{ animation: 'slideUp 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)' }}
+                        onClick={e => e.stopPropagation()}>
+
+                        {/* Drag Handle */}
+                        <div className="w-10 h-1 rounded-full bg-[var(--tg-separator)] mx-auto mb-5 opacity-70" />
+
+                        <h3 className="text-[19px] font-bold text-center mb-6" style={{ color: 'var(--tg-text)' }}>
+                            {isRu ? 'Продолжительность' : 'Duration'}
+                        </h3>
+
+                        <div className="flex flex-col gap-2">
+                            {DURATION_OPTIONS.map((opt) => {
+                                const isSelected = opt.days === value;
+                                return (
+                                    <button
+                                        key={opt.days}
+                                        type="button"
+                                        onClick={() => { onChange(opt.days); setOpen(false); }}
+                                        className="flex items-center justify-between p-4 rounded-[16px] transition-all active:scale-[0.98]"
+                                        style={{
+                                            background: isSelected ? 'color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 12%, transparent)' : 'color-mix(in srgb, var(--tg-hint) 5%, transparent)',
+                                            color: isSelected ? 'var(--tg-theme-button-color, #3390ec)' : 'var(--tg-text)',
+                                            border: isSelected ? '1px solid color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 30%, transparent)' : '1px solid transparent'
+                                        }}
+                                    >
+                                        <span className="text-[16px]" style={{ fontWeight: isSelected ? 700 : 500 }}>
+                                            {isRu ? opt.labelRu : opt.labelEn}
+                                        </span>
+                                        {isSelected && <Check size={18} strokeWidth={3} />}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

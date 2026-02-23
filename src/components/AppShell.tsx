@@ -249,8 +249,6 @@ export default function AppShell() {
                 right: 16,
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
                 zIndex: 100,
                 pointerEvents: 'none',
             }}>
@@ -278,12 +276,14 @@ export default function AppShell() {
                     </div>
                 </div>
 
-                {/* Save FAB — collapsible wrapper so it takes zero layout space when hidden */}
+                {/* Save FAB — collapsible wrapper: width controls layout space, button handles its own visibility */}
                 <div style={{
                     width: fabVisible ? 60 : 0,
-                    overflow: 'hidden',
+                    marginLeft: fabVisible ? 8 : 0,
                     flexShrink: 0,
-                    transition: 'width 0.5s ease-in-out',
+                    overflow: 'visible',
+                    // Only enable transition after mount to avoid initial paint glitch
+                    transition: isMounted ? 'width 0.5s ease-in-out, margin-left 0.5s ease-in-out' : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end',

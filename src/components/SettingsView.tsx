@@ -174,6 +174,25 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         }
     };
 
+    // ─── Telegram Native MainButton wiring (telegram-mini-app skill) ───
+    // Placed AFTER handleSaveAll is declared to avoid "used before declaration" error
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        if (hasUnsavedChanges) {
+            WebApp.MainButton.setText(t.saveSettings || '💾 Сохранить изменения');
+            WebApp.MainButton.show();
+            WebApp.MainButton.onClick(handleSaveAll);
+        } else {
+            WebApp.MainButton.hide();
+            WebApp.MainButton.offClick(handleSaveAll);
+        }
+
+        return () => {
+            WebApp.MainButton.offClick(handleSaveAll);
+        };
+    }, [hasUnsavedChanges, handleSaveAll]);
+
     const handleDeletePlan = async (index: number) => {
         if (!WebApp.initData) return;
         const plan = plans[index];

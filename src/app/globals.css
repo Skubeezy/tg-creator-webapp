@@ -25,8 +25,9 @@
 
 html,
 body {
-  overflow: hidden;
-  position: fixed;
+  /* DO NOT use position:fixed or overflow:hidden on html/body — that kills scroll.
+     Use overscroll-behavior:none to prevent pull-to-refresh instead. */
+  overscroll-behavior: none;
   width: 100%;
   height: 100%;
 }
@@ -83,23 +84,27 @@ button {
 .carousel-track {
   display: flex;
   flex: 1;
+  min-height: 0;
+  /* Critical: allows flex child to shrink so parent height is respected */
+  height: 100%;
   transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 
 .carousel-slide {
-  height: 100%;
-  max-height: 100%;
   min-width: 100%;
   width: 100%;
   flex-shrink: 0;
   padding: 16px;
-  padding-bottom: 220px;
-  /* Increased bottom padding to prevent tab bar overlap */
+  /* Safe area inset + tab bar height + extra buffer */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
   overflow-y: auto;
-  /* Allow vertical scrolling */
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  /* Smooth scrolling on iOS */
+  /* Smooth momentum scroll on iOS */
+  /* touch-action: pan-y allows vertical scroll to work natively
+     when the horizontal swipe hasn't kicked in yet */
+  touch-action: pan-y;
 }
 
 /* ═══════ Telegram iOS Tab Bar (1:1 replica) ═══════ */

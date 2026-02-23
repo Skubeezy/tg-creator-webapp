@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { LayoutDashboard, Bot, Wallet } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { DashboardView } from '@/components/DashboardView';
@@ -35,6 +35,70 @@ export default function AppShell() {
         return () => clearTimeout(t);
     }, []);
 
+    // ─── Native (non-passive) touch listeners for swipe detection ───
+    // React attaches passive listeners by default, meaning e.preventDefault() is
+    // a no-op in onTouchMove. We must use native addEventListener with {passive:false}
+    // so horizontal swipes can preventDefault (block scroll) while vertical swipes
+    // pass through naturally and trigger the slide's overflow-y scroll.
+    useEffect(() => {
+        const el = trackRef.current;
+        if (!el) return;
+
+        const onStart = (e: TouchEvent) => {
+            startX.current = e.touches[0].clientX;
+            startY.current = e.touches[0].clientY;
+            isHorizontal.current = null;
+            setIsDragging(true);
+        };
+
+        const onMove = (e: TouchEvent) => {
+            const dx = e.touches[0].clientX - startX.current;
+            const dy = e.touches[0].clientY - startY.current;
+
+            // Determine direction on first significant movement (5px threshold)
+            if (isHorizontal.current === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                isHorizontal.current = Math.abs(dx) > Math.abs(dy);
+            }
+
+            // If vertical — do nothing, let the slide scroll naturally
+            if (isHorizontal.current === false || isHorizontal.current === null) return;
+
+            // Horizontal swipe confirmed: block browser scroll and move carousel
+            e.preventDefault();
+
+            let offset = dx;
+            // Rubber band at edges
+            setActiveIndex(prev => {
+                if ((prev === 0 && dx > 0) || (prev === 2 && dx < 0)) {
+                    offset = dx * 0.25;
+                }
+                setDragOffset(offset);
+                return prev;
+            });
+        };
+
+        const onEnd = () => {
+            setIsDragging(false);
+            isHorizontal.current = null;
+            setDragOffset(prev => {
+                const threshold = window.innerWidth * 0.2;
+                if (prev < -threshold) setActiveIndex(i => Math.min(i + 1, 2));
+                else if (prev > threshold) setActiveIndex(i => Math.max(i - 1, 0));
+                return 0;
+            });
+        };
+
+        el.addEventListener('touchstart', onStart, { passive: true });
+        el.addEventListener('touchmove', onMove, { passive: false }); // non-passive so preventDefault works
+        el.addEventListener('touchend', onEnd, { passive: true });
+
+        return () => {
+            el.removeEventListener('touchstart', onStart);
+            el.removeEventListener('touchmove', onMove);
+            el.removeEventListener('touchend', onEnd);
+        };
+    }, [trackRef]); // only re-run if ref changes
+
     const t = useMemo(() => getTranslation(langCode), [langCode]);
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tg-creator-saas.onrender.com/api/bots";
     const tabLabels = useMemo(() => [t.dashboard, t.myBots, t.payouts], [t]);
@@ -43,50 +107,6 @@ export default function AppShell() {
         setActiveIndex(idx);
         setDragOffset(0);
     }, []);
-
-    // ─── Touch Swipe Handlers ───
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        startX.current = e.touches[0].clientX;
-        startY.current = e.touches[0].clientY;
-        isHorizontal.current = null;
-        setIsDragging(true);
-    }, []);
-
-    const handleTouchMove = useCallback((e: React.TouchEvent) => {
-        if (!isDragging) return;
-        const dx = e.touches[0].clientX - startX.current;
-        const dy = e.touches[0].clientY - startY.current;
-
-        // Determine direction on first significant movement
-        if (isHorizontal.current === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-            isHorizontal.current = Math.abs(dx) > Math.abs(dy);
-        }
-
-        if (!isHorizontal.current) return;
-
-        // Prevent vertical scroll when swiping horizontally
-        e.preventDefault();
-
-        // Rubber band effect at edges
-        let offset = dx;
-        if ((activeIndex === 0 && dx > 0) || (activeIndex === 2 && dx < 0)) {
-            offset = dx * 0.25;
-        }
-        setDragOffset(offset);
-    }, [isDragging, activeIndex]);
-
-    const handleTouchEnd = useCallback(() => {
-        setIsDragging(false);
-        isHorizontal.current = null;
-
-        const threshold = windowWidth * 0.2;
-        if (dragOffset < -threshold && activeIndex < 2) {
-            setActiveIndex(prev => prev + 1);
-        } else if (dragOffset > threshold && activeIndex > 0) {
-            setActiveIndex(prev => prev - 1);
-        }
-        setDragOffset(0);
-    }, [dragOffset, activeIndex]);
 
     // Calculate carousel transform
     const trackTransform = useMemo(() => {
@@ -116,9 +136,6 @@ export default function AppShell() {
                     transform: trackTransform,
                     transition: isDragging ? 'none' : undefined
                 }}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
             >
                 <div className="carousel-slide">
                     <DashboardView API_URL={API_URL} t={t} userName={userName} />

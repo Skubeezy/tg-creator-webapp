@@ -24,53 +24,64 @@ const DURATION_OPTIONS = [
     { days: 365, labelRu: '1 год', labelEn: '1 year' },
 ];
 
-// ─── Toast ───
-function Toast({ message, onDone }: { message: string; onDone: () => void }) {
+// ─── Toast (glassmorphism, slide-in from right) ───
+function Toast({ message, type = 'success', onDone }: { message: string; type?: 'success' | 'error'; onDone: () => void }) {
     const [phase, setPhase] = useState<'in' | 'hold' | 'out'>('in');
 
     useEffect(() => {
-        const t1 = setTimeout(() => setPhase('hold'), 350);
-        const t2 = setTimeout(() => setPhase('out'), 2400);
-        const t3 = setTimeout(() => onDone(), 2900);
+        const t1 = setTimeout(() => setPhase('hold'), 50);
+        const t2 = setTimeout(() => setPhase('out'), 2500);
+        const t3 = setTimeout(() => onDone(), 3000);
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }, [onDone]);
 
-    const translateY = phase === 'in' ? 'translateY(-40px)' : phase === 'out' ? 'translateY(-40px)' : 'translateY(0px)';
+    const translateX =
+        phase === 'in' ? 'translateX(120%)' :
+            phase === 'out' ? 'translateX(120%)' :
+                'translateX(0)';
+
     const opacity = phase === 'hold' ? 1 : 0;
+    const accent = type === 'error' ? '#ff3b30' : '#30d158';
 
     return (
         <div style={{
             position: 'fixed',
-            top: '20px',
-            left: '50%',
-            transform: `translateX(-50%) ${translateY}`,
+            top: 16,
+            right: 16,
+            transform: translateX,
             opacity,
-            transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease',
+            transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease',
             zIndex: 99999,
             pointerEvents: 'none',
+            maxWidth: 'calc(100vw - 32px)',
         }}>
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                padding: '12px 20px',
-                borderRadius: '100px',
-                background: 'rgba(0,0,0,0.75)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
+                gap: 10,
+                padding: '12px 18px',
+                borderRadius: 18,
+                background: 'rgba(18,18,24,0.82)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
                 color: '#fff',
-                fontSize: '14px',
+                fontSize: 14,
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-                border: '0.5px solid rgba(255,255,255,0.1)'
+                boxShadow: `0 4px 24px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.1)`,
+                border: `1px solid rgba(255,255,255,0.10)`,
+                letterSpacing: '-0.01em',
             }}>
                 <div style={{
-                    width: 20, height: 20, borderRadius: '50%',
-                    background: 'var(--tg-theme-button-color, #3390ec)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: accent,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: `0 0 8px ${accent}66`,
                 }}>
-                    <Check size={12} color="white" strokeWidth={3} />
+                    {type === 'error'
+                        ? <span style={{ fontSize: 12, fontWeight: 800, color: 'white' }}>✕</span>
+                        : <Check size={12} color="white" strokeWidth={3} />}
                 </div>
                 {message}
             </div>
@@ -183,6 +194,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
 
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
     const hasUnsavedPlans = useMemo(() => {
         if (plans.length !== initialPlans.length) return true;
@@ -245,8 +257,16 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     body: JSON.stringify({ welcomeText, paymentMethods })
                 });
                 if (res.ok) {
+                    const saved = await res.json();
                     setInitialWelcomeText(welcomeText);
-                    setInitialPaymentMethods({ ...paymentMethods });
+                    // Read payment methods back from API response to avoid local state desync
+                    const savedPaymentMethods = saved?.settings?.paymentMethods || paymentMethods;
+                    setInitialPaymentMethods({ ...savedPaymentMethods });
+                    setPaymentMethods({ ...savedPaymentMethods });
+                } else {
+                    const errText = await res.text().catch(() => '');
+                    console.error('[SettingsView] PATCH /me/config failed:', res.status, errText);
+                    throw new Error(`Save failed: ${res.status}`);
                 }
             }
 
@@ -276,9 +296,12 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
             setInitialPlans(JSON.parse(JSON.stringify(newPlansState)));
 
             // Show animated toast instead of WebApp.showAlert
+            setToastType('success');
             setToast(t.settingsSaved);
             setTimeout(() => router.refresh(), 500);
-        } catch {
+        } catch (e) {
+            console.error('[SettingsView] handleSaveAll error:', e);
+            setToastType('error');
             setToast(t.settingsSaveError);
         } finally {
             setIsLoading(false);
@@ -353,9 +376,41 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', paddingBottom: 24 }}>
-            {/* Toast */}
-            {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', paddingBottom: 96 }}>
+            {/* Toast — fixed to viewport top-right, never scrolls */}
+            {toast && <Toast message={toast} type={toastType} onDone={() => setToast(null)} />}
+
+            {/* Fixed FAB Save Button — always visible even when scrolled to bottom */}
+            {hasUnsavedChanges && (
+                <button
+                    onClick={handleSaveAll}
+                    disabled={isLoading}
+                    title={isRu ? 'Сохранить' : 'Save'}
+                    style={{
+                        position: 'fixed',
+                        bottom: 24,
+                        right: 20,
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: 'var(--tg-accent, #3390ec)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                        boxShadow: '0 4px 20px rgba(51,144,236,0.55), 0 2px 8px rgba(0,0,0,0.18)',
+                        transition: 'transform 0.15s, opacity 0.15s',
+                        transform: isLoading ? 'scale(0.88)' : 'scale(1)',
+                        opacity: isLoading ? 0.8 : 1,
+                        animation: 'fabPopIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    }}
+                >
+                    {isLoading ? <Loader2 size={22} className="animate-spin" /> : <Save size={22} />}
+                </button>
+            )}
 
             {/* Header */}
             <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -371,25 +426,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         {t.botSettings}
                     </h1>
                 </div>
-
-                {hasUnsavedChanges && (
-                    <button
-                        onClick={handleSaveAll}
-                        disabled={isLoading}
-                        style={{
-                            width: 38, height: 38, borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: 'var(--tg-accent)',
-                            color: 'white',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 0 12px var(--tg-accent)',
-                            transition: 'transform 0.15s, opacity 0.15s',
-                            transform: isLoading ? 'scale(0.9)' : 'scale(1)',
-                            opacity: isLoading ? 0.8 : 1,
-                            animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)'
-                        }}>
-                        {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                    </button>
-                )}
             </header>
 
             {/* Welcome Message */}

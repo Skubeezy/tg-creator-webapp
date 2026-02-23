@@ -257,7 +257,7 @@ export default function AppShell() {
                 {/* Nav pill — shrinks when FAB is visible */}
                 <div style={{
                     flex: 1,
-                    maxWidth: fabVisible ? 'calc(100% - 60px)' : '300px',
+                    maxWidth: fabVisible ? 'calc(100% - 60px)' : '100%',
                     transition: 'max-width 0.5s ease-in-out',
                     pointerEvents: 'auto',
                 }}>

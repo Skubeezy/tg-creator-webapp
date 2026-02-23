@@ -15,6 +15,7 @@ interface Plan {
 
 export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL: string, botId: string, onBack: () => void, onDeleted: () => void, t: TranslationDict }) {
     const [welcomeText, setWelcomeText] = useState(t.loading || "Загрузка...");
+    const [aiSystemPrompt, setAiSystemPrompt] = useState("");
     const [plans, setPlans] = useState<Plan[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -30,6 +31,20 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     const bot = data.bots?.find((b: any) => b.id === botId);
                     if (bot) {
                         setWelcomeText((bot.settings as any)?.welcomeText || "🌟 Welcome!");
+
+                        // Try fetching /me/config to get full settings and aiConfig
+                        try {
+                            const confRes = await fetch(`${API_URL}/me/config`, {
+                                headers: { 'Authorization': `Bearer ${WebApp.initData}` }
+                            });
+                            if (confRes.ok) {
+                                const confData = await confRes.json();
+                                if (confData.aiConfig?.systemPrompt) {
+                                    setAiSystemPrompt(confData.aiConfig.systemPrompt);
+                                }
+                            }
+                        } catch (e) { }
+
                         const rawPlans = bot.subscriptionPlans || [];
                         setPlans(rawPlans.map((p: any) => ({
                             id: p.id,
@@ -59,7 +74,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${WebApp.initData}`
                 },
-                body: JSON.stringify({ welcomeText })
+                body: JSON.stringify({ welcomeText, aiSystemPrompt })
             });
             if (res.ok) {
                 WebApp.showAlert(t.settingsSaved || "Настройки сохранены");
@@ -202,7 +217,33 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         disabled={isLoading}
                         className="mt-3 w-full bg-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-text-color)] rounded-xl py-3 font-semibold active:opacity-80 transition-opacity"
                     >
-                        {t.saveSettings || "Сохранить текст"}
+                        {t.saveSettings || "Сохранить настройки"}
+                    </button>
+                </div>
+            </section>
+
+            {/* AI Assistant Settings */}
+            <section className="tg-card !p-0 overflow-hidden border border-[var(--tg-theme-button-color)]/20">
+                <div className="p-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Sparkles size={18} className="text-yellow-500" />
+                        <h2 className="font-bold">Настройки ИИ (AI Agent)</h2>
+                    </div>
+                </div>
+                <div className="p-4">
+                    <p className="text-xs opacity-60 mb-2">Опишите характер и правила общения для вашего ИИ-агента поддержки. Например: "Общайся как дерзкий фитнес-тренер, продавай подписку."</p>
+                    <textarea
+                        className="w-full bg-black/5 dark:bg-white/5 rounded-lg p-3 text-sm min-h-[100px] outline-none focus:ring-2 focus:ring-[var(--tg-theme-button-color)] transition-all resize-none"
+                        value={aiSystemPrompt}
+                        placeholder="Ты полезный ИИ-помощник..."
+                        onChange={(e) => setAiSystemPrompt(e.target.value)}
+                    />
+                    <button
+                        onClick={handleSaveGeneral}
+                        disabled={isLoading}
+                        className="mt-3 w-full bg-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-text-color)] rounded-xl py-3 font-semibold active:opacity-80 transition-opacity"
+                    >
+                        {t.saveSettings || "Сохранить настройки"}
                     </button>
                 </div>
             </section>

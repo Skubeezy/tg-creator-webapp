@@ -35,32 +35,35 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }, [onDone]);
 
-    const translateY = phase === 'in' ? 'translateY(80px)' : phase === 'out' ? 'translateY(80px)' : 'translateY(0px)';
+    const translateY = phase === 'in' ? 'translateY(-40px)' : phase === 'out' ? 'translateY(-40px)' : 'translateY(0px)';
     const opacity = phase === 'hold' ? 1 : 0;
 
     return (
         <div style={{
             position: 'fixed',
-            bottom: '100px',
+            top: '20px',
             left: '50%',
             transform: `translateX(-50%) ${translateY}`,
             opacity,
             transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease',
-            zIndex: 999,
+            zIndex: 99999,
             pointerEvents: 'none',
         }}>
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
+                gap: '12px',
                 padding: '12px 20px',
-                borderRadius: '20px',
-                background: 'var(--tg-text)',
-                color: 'var(--tg-bg, #fff)',
+                borderRadius: '100px',
+                background: 'rgba(0,0,0,0.75)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                color: '#fff',
                 fontSize: '14px',
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                border: '0.5px solid rgba(255,255,255,0.1)'
             }}>
                 <div style={{
                     width: 20, height: 20, borderRadius: '50%',
@@ -214,7 +217,8 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     setInitialPlans(JSON.parse(JSON.stringify(rawPlans)));
 
                     const bSettings = bot.settings as any;
-                    const wText = bSettings?.welcomeText || 'Welcome!';
+                    const wText = bSettings?.welcomeText || bSettings?.welcomeTextEn || bSettings?.welcomeTextRu || (isRu ? 'Добро пожаловать!' : 'Welcome!');
+
                     setWelcomeText(wText);
                     setInitialWelcomeText(wText);
 
@@ -224,7 +228,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                 }
             }
         } catch (e) { console.error('Failed to load bot data', e); }
-    }, [API_URL, botId]);
+    }, [API_URL, botId, isRu]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -277,7 +281,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         } finally {
             setIsLoading(false);
         }
-    }, [API_URL, botId, welcomeText, initialWelcomeText, hasUnsavedPaymentMethods, paymentMethods, initialPaymentMethods, plans, isRu]);
+    }, [API_URL, botId, welcomeText, initialWelcomeText, hasUnsavedPaymentMethods, paymentMethods, initialPaymentMethods, plans, t.settingsSaved, t.settingsSaveError]);
 
     // Wire Telegram native MainButton is removed per user request
     useEffect(() => {
@@ -347,17 +351,38 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
             {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
             {/* Header */}
-            <header style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button onClick={onBack} style={{
-                    width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'color-mix(in srgb, var(--tg-hint) 10%, transparent)', border: 'none', cursor: 'pointer',
-                    color: 'var(--tg-accent)',
-                }}>
-                    <ArrowLeft size={20} />
-                </button>
-                <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
-                    {t.botSettings}
-                </h1>
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button onClick={onBack} style={{
+                        width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'color-mix(in srgb, var(--tg-hint) 10%, transparent)', border: 'none', cursor: 'pointer',
+                        color: 'var(--tg-accent)',
+                    }}>
+                        <ArrowLeft size={20} />
+                    </button>
+                    <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
+                        {t.botSettings}
+                    </h1>
+                </div>
+
+                {hasUnsavedChanges && (
+                    <button
+                        onClick={handleSaveAll}
+                        disabled={isLoading}
+                        style={{
+                            width: 38, height: 38, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                            background: 'var(--tg-accent)',
+                            color: 'white',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 0 12px var(--tg-accent)',
+                            transition: 'transform 0.15s, opacity 0.15s',
+                            transform: isLoading ? 'scale(0.9)' : 'scale(1)',
+                            opacity: isLoading ? 0.8 : 1,
+                            animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)'
+                        }}>
+                        {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    </button>
+                )}
             </header>
 
             {/* Welcome Message */}
@@ -369,9 +394,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     <span style={{ fontWeight: 600, fontSize: 15 }}>{t.welcomeMessage}</span>
                 </div>
                 <div style={S.body}>
-                    <p style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 10, marginTop: 0 }}>
-                        {t.welcomeHint}
-                    </p>
                     <textarea
                         style={{
                             width: '100%', minHeight: 90, padding: 12, borderRadius: 14,
@@ -386,17 +408,15 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         onChange={e => setWelcomeText(e.target.value)}
                         onFocus={e => {
                             e.target.style.borderColor = 'var(--tg-accent)';
-                            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                            document.body.style.paddingBottom = '40vh';
                         }}
                         onBlur={e => {
                             e.target.style.borderColor = 'color-mix(in srgb, var(--tg-hint) 12%, transparent)';
-                            document.body.style.paddingBottom = '0px';
+                            window.scrollTo(0, 0); // scroll fix
                         }}
                     />
-                    <p style={{ fontSize: 11, color: 'var(--tg-hint)', opacity: 0.8, marginTop: 8, textAlign: 'center' }}>
-                        <Sparkles size={11} style={{ display: 'inline', marginRight: 4, position: 'relative', top: '-1px' }} />
-                        {t.autoTranslateHint}
+                    <p style={{ fontSize: 11, color: 'var(--tg-hint)', marginTop: 8, paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 4, opacity: 0.8 }}>
+                        <Sparkles size={12} />
+                        Текст будет автоматически переведен на язык пользователя
                     </p>
                 </div>
             </section>
@@ -523,23 +543,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                 </div>
             </section>
 
-            {/* Save Button */}
-            <button
-                onClick={handleSaveAll}
-                disabled={isLoading || !hasUnsavedChanges}
-                className={hasUnsavedChanges && !isLoading ? "action-btn" : ""}
-                style={{
-                    width: '100%', padding: '15px', borderRadius: 18, border: 'none', cursor: 'pointer',
-                    background: hasUnsavedChanges ? 'var(--tg-accent)' : 'color-mix(in srgb, var(--tg-hint) 15%, transparent)',
-                    color: hasUnsavedChanges ? 'white' : 'var(--tg-hint)',
-                    fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    fontFamily: 'inherit',
-                    transition: 'background 0.3s, color 0.3s, transform 0.1s',
-                    transform: isLoading ? 'scale(0.97)' : 'scale(1)',
-                }}>
-                {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                {t.saveSettings}
-            </button>
+            {/* Save Button is now Top-Right */}
 
             {/* Danger Zone */}
             <section style={{ ...S.section, border: '0.5px solid rgba(255,59,48,0.25)' }}>

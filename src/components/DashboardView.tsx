@@ -123,14 +123,16 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
             const res = await fetch(`${API_URL}/me/bots/${selectedBroadcastBotId}/broadcast`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
-                body: JSON.stringify({ text: broadcastText })
+                body: JSON.stringify({
+                    text: broadcastText
+                })
             });
             const data = await res.json();
             if (data.success) {
-                WebApp.showAlert(`✅ ${isRu ? `Отправлено ${data.result.successCount} фанатам` : `Sent to ${data.result.successCount} fans`}`);
+                WebApp.showAlert(isRu ? `Отправлено ${data.result.successCount} фанатам` : `Sent to ${data.result.successCount} fans`);
                 setBroadcastText('');
             } else {
-                WebApp.showAlert(`❌ ${data.error || t.networkError}`);
+                WebApp.showAlert(data.error || t.networkError);
             }
         } catch {
             WebApp.showAlert(t.networkError);
@@ -330,8 +332,9 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                 <p className="text-[13px] mb-3 leading-snug" style={{ color: 'var(--tg-hint)' }}>
                     {t.broadcastDesc}
                 </p>
+
                 <textarea
-                    rows={4}
+                    rows={3}
                     placeholder={t.broadcastPlaceholder}
                     className="w-full bg-transparent border border-[var(--tg-separator)] outline-none rounded-[12px] p-3 text-[14px] resize-none mb-1"
                     value={broadcastText}
@@ -342,12 +345,13 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                     }}
                     onBlur={() => {
                         document.body.style.paddingBottom = '0px';
+                        window.scrollTo(0, 0);
                     }}
                     style={{ color: 'var(--tg-text)' }}
                 />
                 <p className="text-[11px] mb-4 text-center" style={{ color: 'var(--tg-hint)', opacity: 0.8 }}>
                     <Sparkles size={11} className="inline mr-1 relative -top-[1px]" />
-                    {t.autoTranslateHint}
+                    Текст будет автоматически переведен на язык пользователя
                 </p>
 
                 <button

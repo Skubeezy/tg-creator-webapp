@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { LayoutDashboard, Bot, Wallet } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { DashboardView } from '@/components/DashboardView';

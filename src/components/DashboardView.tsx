@@ -372,7 +372,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                     onClick={() => setShowCommissionModal(false)}>
-                    <div className="w-full max-w-[340px] bg-[var(--tg-bg)] rounded-[24px] p-6 shadow-2xl relative overflow-hidden"
+                    <div className="w-full max-w-[340px] max-h-[85vh] overflow-y-auto overflow-x-hidden bg-[var(--tg-bg)] rounded-[24px] p-6 shadow-2xl relative scrollbar-hide"
                         style={{ animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)' }}
                         onClick={e => e.stopPropagation()}>
 

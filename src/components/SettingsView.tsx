@@ -124,23 +124,24 @@ function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (d
             {/* Dropdown */}
             <div style={{
                 position: 'absolute',
-                top: 'calc(100% + 6px)',
+                top: 'calc(100% + 8px)',
                 left: 0,
                 right: 0,
-                zIndex: 100,
+                zIndex: 99999,
                 borderRadius: 16,
-                overflow: 'hidden',
+                padding: '4px',
                 background: 'var(--tg-bg, #fff)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.14), 0 0 0 0.5px rgba(0,0,0,0.06)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 0 0 1px color-mix(in srgb, var(--tg-hint) 10%, transparent)',
                 transformOrigin: 'top center',
-                transform: open ? 'scaleY(1) translateY(0)' : 'scaleY(0.8) translateY(-8px)',
+                transform: open ? 'scaleY(1) translateY(0)' : 'scaleY(0.95) translateY(-4px)',
                 opacity: open ? 1 : 0,
                 pointerEvents: open ? 'all' : 'none',
-                transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease',
+                transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.1), opacity 0.15s ease',
             }}>
-                {DURATION_OPTIONS.map((opt, idx) => (
-                    <div key={opt.days}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {DURATION_OPTIONS.map((opt, idx) => (
                         <button
+                            key={opt.days}
                             type="button"
                             onClick={() => { onChange(opt.days); setOpen(false); }}
                             style={{
@@ -148,27 +149,25 @@ function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (d
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                padding: '13px 16px',
-                                background: opt.days === value ? 'color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 8%, transparent)' : 'transparent',
+                                padding: '12px 14px',
+                                borderRadius: 12,
+                                background: opt.days === value ? 'color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 12%, transparent)' : 'transparent',
                                 color: opt.days === value ? 'var(--tg-theme-button-color, #3390ec)' : 'var(--tg-text)',
-                                fontSize: 15,
-                                fontWeight: opt.days === value ? 600 : 400,
+                                fontSize: 14,
+                                fontWeight: opt.days === value ? 700 : 500,
                                 fontFamily: 'inherit',
                                 cursor: 'pointer',
                                 textAlign: 'left',
                                 border: 'none',
                                 outline: 'none',
-                                transition: 'background 0.12s',
+                                transition: 'background 0.1s ease',
                             }}
                         >
                             {isRu ? opt.labelRu : opt.labelEn}
-                            {opt.days === value && <Check size={16} style={{ color: 'var(--tg-theme-button-color, #3390ec)' }} strokeWidth={2.5} />}
+                            {opt.days === value && <Check size={16} strokeWidth={3} />}
                         </button>
-                        {idx < DURATION_OPTIONS.length - 1 && (
-                            <div style={{ height: '0.5px', background: 'color-mix(in srgb, var(--tg-hint) 10%, transparent)', marginLeft: 16 }} />
-                        )}
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
         </div>
     );

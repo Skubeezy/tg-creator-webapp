@@ -16,11 +16,24 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
     const isSaving = state === 'saving';
     const isSuccess = state === 'success';
 
-    // Track if we should show the checkmark (only when success)
-    const showCheck = isSuccess;
+    // Track if we should show the checkmark and keep it latched until the button fades out completely
+    const [showCheck, setShowCheck] = useState(false);
+
+    useEffect(() => {
+        if (isSuccess) setShowCheck(true);
+        if (!visible) {
+            const timer = setTimeout(() => setShowCheck(false), 400); // 400ms is longer than the hide animation
+            return () => clearTimeout(timer);
+        }
+    }, [isSuccess, visible]);
+
+    // Initial color neutral, lights up when clicked/saving/success
+    const iconColor = (isSaving || showCheck) ? 'var(--tg-accent, #3390ec)' : 'var(--tg-text, currentColor)';
+    const iconOpacity = (isSaving || showCheck) ? 1 : 0.65;
 
     return (
         <button
+            className="tab-bar-inner"
             onClick={onClick}
             disabled={isSaving}
             aria-label="Save settings"
@@ -28,6 +41,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                 width: 52,
                 height: 52,
                 borderRadius: '50%',
+                padding: 0,
                 flexShrink: 0,
                 border: 'none',
                 cursor: isSaving ? 'default' : 'pointer',
@@ -37,22 +51,17 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                 position: 'relative',
                 overflow: 'hidden',
                 pointerEvents: visible ? 'auto' : 'none',
-                // Glassmorphism matching tab-bar-inner
-                background: 'var(--glass-bg)',
-                backdropFilter: 'blur(40px) saturate(200%)',
-                WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                boxShadow: '0 0 0 0.5px rgba(255, 255, 255, 0.07), 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
-                // Appear/disappear
+                // Drop inline glassmorphism to fully inherit the exact tab-bar-inner styles,
+                // but keep our custom appear/disappear transform logic!
                 opacity: visible ? 1 : 0,
                 transform: visible ? 'scale(1) translateX(0)' : 'scale(0.6) translateX(20px)',
-                transition: 'opacity 0.35s cubic-bezier(0.22,0.61,0.36,1), transform 0.35s cubic-bezier(0.22,0.61,0.36,1), background 0.4s ease, box-shadow 0.4s ease',
-                color: 'var(--tg-text, white)',
+                transition: 'opacity 0.25s cubic-bezier(0.22,0.61,0.36,1), transform 0.25s cubic-bezier(0.22,0.61,0.36,1)',
             }}
         >
-            {/* Sheen overlay */}
+            {/* Sheen overlay for a bit of 3D depth */}
             <div style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%)',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%)',
                 pointerEvents: 'none',
             }} />
 
@@ -60,7 +69,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
             <svg
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--tg-accent, #3390ec)" /* Tint icon with accent color */
+                stroke={iconColor}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -68,10 +77,10 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                     width: 22,
                     height: 22,
                     position: 'absolute',
-                    opacity: showCheck ? 0 : 1,
+                    opacity: showCheck ? 0 : iconOpacity,
                     transform: isSaving ? 'scale(0.85)' : 'scale(1)',
-                    animation: isSaving ? 'saveSpin 0.9s linear infinite' : 'none',
-                    transition: 'opacity 0.25s ease, transform 0.2s ease',
+                    animation: isSaving ? 'saveSpin 0.55s linear infinite' : 'none',
+                    transition: 'opacity 0.2s ease, transform 0.15s ease, stroke 0.25s ease',
                 }}
             >
                 {/* Floppy disk outline */}
@@ -86,7 +95,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
             <svg
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--tg-accent, #3390ec)"
+                stroke={iconColor}
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -96,7 +105,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                     position: 'absolute',
                     opacity: showCheck ? 1 : 0,
                     transform: showCheck ? 'scale(1)' : 'scale(0.5)',
-                    transition: 'opacity 0.3s ease 0.05s, transform 0.35s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
+                    transition: 'opacity 0.2s ease 0.05s, transform 0.25s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
                 }}
             >
                 <polyline
@@ -104,7 +113,7 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                     style={{
                         strokeDasharray: 25,
                         strokeDashoffset: showCheck ? 0 : 25,
-                        transition: 'stroke-dashoffset 0.4s ease 0.1s',
+                        transition: 'stroke-dashoffset 0.25s ease 0.08s',
                     }}
                 />
             </svg>

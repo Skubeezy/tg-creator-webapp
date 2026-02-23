@@ -254,11 +254,11 @@ export default function AppShell() {
                 zIndex: 100,
                 pointerEvents: 'none',
             }}>
-                {/* Nav pill — shrinks when FAB is visible */}
+                {/* Nav pill — flex:1 naturally fills available space */}
                 <div style={{
                     flex: 1,
-                    maxWidth: fabVisible ? 'calc(100% - 60px)' : '100%',
-                    transition: 'max-width 0.5s ease-in-out',
+                    minWidth: 0,
+                    transition: 'flex 0.5s ease-in-out',
                     pointerEvents: 'auto',
                 }}>
                     <div className="tab-bar-inner">
@@ -278,8 +278,18 @@ export default function AppShell() {
                     </div>
                 </div>
 
-                {/* Save FAB */}
-                <SaveFAB state={fabState} visible={fabVisible} onClick={handleFabClick} />
+                {/* Save FAB — collapsible wrapper so it takes zero layout space when hidden */}
+                <div style={{
+                    width: fabVisible ? 60 : 0,
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    transition: 'width 0.5s ease-in-out',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                }}>
+                    <SaveFAB state={fabState} visible={fabVisible} onClick={handleFabClick} />
+                </div>
             </div>
         </main>
     );

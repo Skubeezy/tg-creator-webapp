@@ -137,6 +137,14 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
         }
     };
 
+    // Lock body scroll when Commission Modal is open
+    useEffect(() => {
+        if (showCommissionModal) {
+            document.body.style.overflow = 'hidden';
+            return () => { document.body.style.overflow = ''; };
+        }
+    }, [showCommissionModal]);
+
     // ─── Welcome ───
     if (showWelcome) {
         return (

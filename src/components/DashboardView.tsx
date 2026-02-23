@@ -310,7 +310,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                                         color: selectedBroadcastBotId === bot.id ? 'white' : 'var(--tg-hint)'
                                     }}
                                 >
-                                    @{bot.username || bot.name}
+                                    {bot.username ? (bot.username.startsWith('@') ? bot.username : `@${bot.username}`) : bot.name}
                                 </button>
                             ))}
                         </div>

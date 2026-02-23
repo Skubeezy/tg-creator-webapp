@@ -222,7 +222,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     setInitialPlans(JSON.parse(JSON.stringify(rawPlans)));
 
                     const bSettings = bot.settings as any;
-                    const wText = bSettings?.welcomeText || '🌟 Welcome!';
+                    const wText = bSettings?.welcomeText || 'Welcome!';
                     setWelcomeText(wText);
                     setInitialWelcomeText(wText);
 
@@ -287,19 +287,11 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         }
     }, [API_URL, botId, welcomeText, initialWelcomeText, hasUnsavedPaymentMethods, paymentMethods, initialPaymentMethods, plans, isRu]);
 
-    // Wire Telegram native MainButton
+    // Wire Telegram native MainButton is removed per user request
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        if (hasUnsavedChanges) {
-            WebApp.MainButton.setText(isRu ? '💾 Сохранить' : '💾 Save');
-            WebApp.MainButton.show();
-            WebApp.MainButton.onClick(handleSaveAll);
-        } else {
-            WebApp.MainButton.hide();
-            WebApp.MainButton.offClick(handleSaveAll);
-        }
-        return () => { WebApp.MainButton.offClick(handleSaveAll); };
-    }, [hasUnsavedChanges, handleSaveAll, isRu]);
+        WebApp.MainButton.hide();
+    }, []);
 
     const handleDeletePlan = async (index: number) => {
         const plan = plans[index];
@@ -338,15 +330,17 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
 
     const S = {
         section: {
-            borderRadius: 20, overflow: 'hidden' as const,
+            borderRadius: 20,
             background: 'var(--glass-bg)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             border: '0.5px solid var(--glass-border)',
+            position: 'relative' as const,
         } as React.CSSProperties,
         header: {
             padding: '14px 16px', borderBottom: '0.5px solid color-mix(in srgb, var(--tg-hint) 10%, transparent)',
-            display: 'flex', alignItems: 'center', gap: 10
+            display: 'flex', alignItems: 'center', gap: 10,
+            borderTopLeftRadius: 20, borderTopRightRadius: 20,
         } as React.CSSProperties,
         iconBox: (color: string, bg: string) => ({
             width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -414,7 +408,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                 </div>
                 <div style={{ padding: '10px 16px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {([
-                        { key: 'stars', label: 'Telegram Stars ⭐️' },
+                        { key: 'stars', label: 'Telegram Stars' },
                         { key: 'crypto', label: isRu ? 'Крипто (CryptoPay)' : 'Crypto (CryptoPay)' },
                         { key: 'card', label: isRu ? 'Банковская карта' : 'Bank Card (Stripe)' },
                     ] as { key: 'stars' | 'crypto' | 'card'; label: string }[]).map(method => {
@@ -530,11 +524,12 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
             <button
                 onClick={handleSaveAll}
                 disabled={isLoading || !hasUnsavedChanges}
+                className={hasUnsavedChanges && !isLoading ? "action-btn" : ""}
                 style={{
                     width: '100%', padding: '15px', borderRadius: 18, border: 'none', cursor: 'pointer',
                     background: hasUnsavedChanges ? 'var(--tg-accent)' : 'color-mix(in srgb, var(--tg-hint) 15%, transparent)',
                     color: hasUnsavedChanges ? 'white' : 'var(--tg-hint)',
-                    fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     fontFamily: 'inherit',
                     transition: 'background 0.3s, color 0.3s, transform 0.1s',
                     transform: isLoading ? 'scale(0.97)' : 'scale(1)',

@@ -2,44 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Design Tokens ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root {
   --tg-bg: var(--tg-theme-bg-color, #ffffff);
-  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #efeff4);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f7);
   --tg-text: var(--tg-theme-text-color, #000000);
   --tg-hint: var(--tg-theme-hint-color, #8e8e93);
   --tg-accent: var(--tg-theme-button-color, #3390ec);
   --tg-accent-text: var(--tg-theme-button-text-color, #ffffff);
   --tg-link: var(--tg-theme-link-color, #3390ec);
-  --tg-separator: rgba(60, 60, 67, 0.08);
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.45);
+  --tg-separator: rgba(60, 60, 67, 0.09);
+
+  --glass-bg: rgba(255, 255, 255, 0.80);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 2px 20px rgba(0, 0, 0, 0.06), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+
+  --radius-card: 20px;
+  --radius-btn: 16px;
+  --radius-sm: 12px;
+
+  --dur-fast: 0.18s;
+  --dur-med: 0.32s;
+  --dur-spring: 0.42s;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --tg-separator: rgba(255, 255, 255, 0.08);
-    --glass-bg: rgba(30, 30, 30, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.08);
+    --tg-separator: rgba(255, 255, 255, 0.09);
+    --glass-bg: rgba(30, 30, 34, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.07);
+    --glass-shadow: 0 2px 24px rgba(0, 0, 0, 0.40), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
   }
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Base ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 html,
 body {
-  /* DO NOT use position:fixed or overflow:hidden on html/body — that kills scroll.
-     Use overscroll-behavior:none to prevent pull-to-refresh instead. */
   overscroll-behavior: none;
   width: 100%;
   height: 100%;
 }
 
 body {
-  background-color: var(--tg-secondary-bg);
+  background: var(--tg-secondary-bg);
   color: var(--tg-text);
   margin: 0;
   padding: 0;
   font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -58,17 +70,24 @@ button {
   font-family: inherit;
 }
 
-/* ═══════ iOS Glass Cards ═══════ */
-.tg-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 16px;
-  border: 0.5px solid var(--glass-border);
+input,
+textarea {
+  font-family: inherit;
+  -webkit-appearance: none;
 }
 
-/* ═══════ App Shell ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Cards ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tg-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  border: 0.5px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ App Shell ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .app-shell {
   width: 100%;
   height: 100vh;
@@ -80,14 +99,13 @@ button {
   color: var(--tg-text);
 }
 
-/* ═══════ Carousel ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Carousel ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .carousel-track {
   display: flex;
   flex: 1;
   min-height: 0;
-  /* Critical: allows flex child to shrink so parent height is respected */
   height: 100%;
-  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
   will-change: transform;
 }
 
@@ -96,18 +114,15 @@ button {
   width: 100%;
   flex-shrink: 0;
   padding: 16px;
-  /* Safe area inset + tab bar height + extra buffer */
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  /* Smooth momentum scroll on iOS */
-  /* touch-action: pan-y allows vertical scroll to work natively
-     when the horizontal swipe hasn't kicked in yet */
   touch-action: pan-y;
+  overscroll-behavior-y: contain;
 }
 
-/* ═══════ Telegram iOS Tab Bar (1:1 replica) ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Tab Bar ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .tab-bar {
   position: fixed;
   bottom: 24px;
@@ -125,23 +140,24 @@ button {
   border-radius: 28px;
   padding: 4px;
   background: var(--glass-bg);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
   box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.04),
-    0 4px 24px rgba(0, 0, 0, 0.08),
-    0 1px 3px rgba(0, 0, 0, 0.04);
+    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 @media (prefers-color-scheme: dark) {
   .tab-bar-inner {
     box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 0.06),
-      0 4px 24px rgba(0, 0, 0, 0.4);
+      0 0 0 0.5px rgba(255, 255, 255, 0.07),
+      0 8px 32px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 }
 
-/* Sliding pill — exact Telegram style: light accent oval */
 .tab-pill {
   position: absolute;
   top: 4px;
@@ -149,26 +165,24 @@ button {
   left: 4px;
   width: calc((100% - 8px) / 3);
   border-radius: 24px;
-  background: var(--tg-accent);
-  opacity: 0.1;
-  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  background: color-mix(in srgb, var(--tg-accent) 14%, transparent);
+  transition: transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
   will-change: transform;
   pointer-events: none;
 }
 
-/* Tab buttons */
 .tab-item {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
   padding: 7px 0 5px;
   position: relative;
   z-index: 1;
   color: var(--tg-hint);
-  transition: color 0.2s ease;
+  transition: color var(--dur-fast) ease, transform var(--dur-fast) ease;
 }
 
 .tab-item span {
@@ -182,15 +196,15 @@ button {
 }
 
 .tab-item.active span {
-  font-weight: 600;
+  font-weight: 700;
 }
 
-/* Active press state */
 .tab-item:active {
-  opacity: 0.6;
+  transform: scale(0.88);
+  opacity: 0.7;
 }
 
-/* ═══════ Launch Screen ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Launch Screen ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .launch-screen {
   position: fixed;
   inset: 0;
@@ -204,22 +218,22 @@ button {
 }
 
 .launch-logo {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
+  width: 76px;
+  height: 76px;
+  border-radius: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--tg-accent);
   animation: breathe 2s ease-in-out infinite;
-  box-shadow: 0 8px 32px rgba(51, 144, 236, 0.3);
+  box-shadow: 0 8px 40px color-mix(in srgb, var(--tg-accent) 50%, transparent);
 }
 
 .launch-text {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   color: var(--tg-text);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
 }
 
 .launch-spinner {
@@ -236,12 +250,12 @@ button {
   0%,
   100% {
     transform: scale(1);
-    opacity: 1;
+    box-shadow: 0 8px 40px color-mix(in srgb, var(--tg-accent) 45%, transparent);
   }
 
   50% {
-    transform: scale(1.04);
-    opacity: 0.9;
+    transform: scale(1.06);
+    box-shadow: 0 12px 52px color-mix(in srgb, var(--tg-accent) 65%, transparent);
   }
 }
 
@@ -251,23 +265,22 @@ button {
   }
 }
 
-/* ═══════ Section headers (iOS style) ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ iOS List Rows ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .section-header {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--tg-hint);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  padding: 0 16px;
+  letter-spacing: 0.04em;
+  padding: 0 4px;
   margin-bottom: 6px;
 }
 
-/* ═══════ iOS List Rows ═══════ */
 .list-row {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  transition: background 0.15s ease;
+  transition: background var(--dur-fast) ease;
 }
 
 .list-row:active {
@@ -286,41 +299,122 @@ button {
   margin-left: 60px;
 }
 
-/* ═══════ Action Button (iOS style) ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Action Button — Aurora Shimmer ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .action-btn {
   width: 100%;
-  padding: 14px;
-  border-radius: 12px;
+  padding: 15px;
+  border-radius: var(--radius-btn);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   background: var(--tg-accent);
   color: var(--tg-accent-text);
-  transition: opacity 0.15s ease;
+  transition: opacity var(--dur-fast) ease, transform var(--dur-fast) ease;
+  letter-spacing: -0.01em;
+  position: relative;
+  overflow: hidden;
+  /* Aurora border/glow */
+  box-shadow:
+    0 4px 20px color-mix(in srgb, var(--tg-accent) 35%, transparent),
+    0 0 0 0.5px color-mix(in srgb, var(--tg-accent) 60%, transparent);
+}
+
+/* Shifting aurora overlay */
+.action-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.12) 25%,
+      rgba(255, 255, 255, 0.28) 50%,
+      rgba(255, 255, 255, 0.12) 75%,
+      transparent 100%);
+  background-size: 300% 300%;
+  animation: aurora 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Sheen sweep */
+.action-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 70%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.18) 45%,
+      rgba(255, 255, 255, 0.38) 50%,
+      rgba(255, 255, 255, 0.18) 55%,
+      transparent 100%);
+  animation: shimmerSweep 2.8s ease-in-out infinite;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+@keyframes aurora {
+
+  0%,
+  100% {
+    background-position: 0% 0%;
+  }
+
+  33% {
+    background-position: 100% 0%;
+  }
+
+  66% {
+    background-position: 100% 100%;
+  }
+}
+
+@keyframes shimmerSweep {
+  0% {
+    left: -120%;
+  }
+
+  40% {
+    left: 120%;
+  }
+
+  100% {
+    left: 120%;
+  }
 }
 
 .action-btn:active {
-  opacity: 0.7;
+  opacity: 0.78;
+  transform: scale(0.97);
 }
 
 .action-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.38;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
-/* ═══════ Water Fill Card ═══════ */
+.action-btn:disabled::before,
+.action-btn:disabled::after {
+  display: none;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Water Fill ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .water-card {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
-  min-height: 140px;
+  border-radius: var(--radius-card);
+  min-height: 148px;
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
   border: 0.5px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 .water-fill {
@@ -328,17 +422,16 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(90deg,
-      color-mix(in srgb, var(--tg-accent) 8%, transparent) 0%,
+  background: linear-gradient(135deg,
+      color-mix(in srgb, var(--tg-accent) 8%, transparent),
       color-mix(in srgb, var(--tg-accent) 18%, transparent) 35%,
       color-mix(in srgb, var(--tg-accent) 12%, transparent) 65%,
-      color-mix(in srgb, var(--tg-accent) 20%, transparent) 100%);
-  background-size: 200% 100%;
+      color-mix(in srgb, var(--tg-accent) 22%, transparent));
+  background-size: 200% 200%;
   animation: waterShimmer 5s ease-in-out infinite;
-  transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: height 2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Soft rounded top edge — creates natural water surface */
 .water-fill::before {
   content: '';
   position: absolute;
@@ -359,50 +452,54 @@ button {
   }
 
   50% {
-    background-position: 100% 0%;
+    background-position: 100% 100%;
   }
 }
 
 .water-content {
   position: relative;
   z-index: 1;
-  padding: 16px;
+  padding: 18px;
   color: var(--tg-text);
 }
 
-/* ═══════ Stat Card Animations ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Stat Card Anim ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .stat-card-anim {
   opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transform: translateY(16px) scale(0.98);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 .stat-card-anim.visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .mini-bar {
-  transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: height 0.7s var(--ease-out);
 }
 
 .chart-line {
   stroke-dasharray: 200;
   stroke-dashoffset: 200;
-  transition: stroke-dashoffset 1.2s ease;
+  transition: stroke-dashoffset 1.4s ease;
 }
 
 .chart-line.drawn {
   stroke-dashoffset: 0;
 }
 
-/* ═══════ View Transitions ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ View Transitions ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .view-enter {
-  animation: viewSlideIn 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation: viewSlideIn 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
 .view-exit {
   animation: viewSlideOut 0.25s ease forwards;
+}
+
+.view-enter-back {
+  animation: viewSlideInBack 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
 @keyframes viewSlideIn {
@@ -424,18 +521,14 @@ button {
   }
 
   to {
-    transform: translateX(-30%);
+    transform: translateX(-28%);
     opacity: 0;
   }
 }
 
-.view-enter-back {
-  animation: viewSlideInBack 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-}
-
 @keyframes viewSlideInBack {
   from {
-    transform: translateX(-30%);
+    transform: translateX(-28%);
     opacity: 0.5;
   }
 
@@ -445,12 +538,7 @@ button {
   }
 }
 
-/* ═══════ Disable scroll on short pages ═══════ */
-.carousel-slide.no-scroll {
-  overflow: hidden;
-}
-
-/* ═══════ Commission Info Modal ═══════ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Modal ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -458,21 +546,21 @@ button {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fadeIn 0.22s ease;
 }
 
 .modal-sheet {
   width: 100%;
   max-width: 420px;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
-  border-radius: 20px 20px 0 0;
-  padding: 20px 16px 32px;
+  border-radius: 28px 28px 0 0;
+  padding: 20px 16px 40px;
   background: var(--tg-bg);
-  animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: slideUp 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 @keyframes fadeIn {
@@ -500,22 +588,100 @@ button {
   height: 4px;
   border-radius: 2px;
   background: var(--tg-separator);
-  margin: 0 auto 16px;
+  margin: 0 auto 20px;
 }
 
-/* ═══════ Global Save Banner ═══════ */
-.save-banner-anim-enter {
-  animation: saveBannerSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Toggle Switch ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.toggle-track {
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
+  position: relative;
+  transition: background 0.25s var(--ease-out);
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
-@keyframes saveBannerSlideUp {
-  from {
-    transform: translateY(120%);
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  transition: left 0.25s var(--ease-spring);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Input ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tg-input {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--tg-hint) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tg-hint) 12%, transparent);
+  color: var(--tg-text);
+  font-size: 15px;
+  outline: none;
+  resize: none;
+  transition: border-color var(--dur-fast);
+}
+
+.tg-input:focus {
+  border-color: var(--tg-accent);
+}
+
+.tg-input::placeholder {
+  color: var(--tg-hint);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Pulse dot ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: scale(2);
     opacity: 0;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Settings Input (Legacy) ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.settings-input {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--tg-hint) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tg-hint) 12%, transparent);
+  color: var(--tg-text);
+  font-size: 15px;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 8px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Staggered list entry ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.list-item-enter {
+  animation: listItemIn 0.4s var(--ease-spring) both;
+}
+
+@keyframes listItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
   }
 
   to {
-    transform: translateY(0);
     opacity: 1;
+    transform: translateY(0) scale(1);
   }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Glow ring for accent btn ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.btn-glow {
+  box-shadow:
+    0 4px 18px color-mix(in srgb, var(--tg-accent) 40%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--tg-accent) 30%, transparent);
 }

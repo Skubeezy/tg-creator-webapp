@@ -125,15 +125,8 @@ textarea {
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Tab Bar ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .tab-bar {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateZ(0);
-  /* Force HW Accel to stop glitching */
-  z-index: 100;
-  width: 72%;
-  max-width: 300px;
-  will-change: transform;
+  /* Position is now managed inline in AppShell's unified bottom bar wrapper */
+  width: 100%;
 }
 
 .tab-bar-inner {
@@ -265,6 +258,21 @@ textarea {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* ─── Save FAB spin animation ─── */
+@keyframes saveSpin {
+  0% {
+    transform: rotate(0deg) scale(0.85);
+  }
+
+  50% {
+    transform: rotate(180deg) scale(0.9);
+  }
+
+  100% {
+    transform: rotate(360deg) scale(0.85);
   }
 }
 

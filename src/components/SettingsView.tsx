@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ArrowLeft, Tag, Trash2, PlusCircle, Save, Loader2, Wallet, Check, ChevronDown, MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, Tag, Trash2, PlusCircle, Check, ChevronDown, MessageSquare, Sparkles, Wallet } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { TranslationDict } from '@/lib/translations';
 
@@ -23,70 +23,6 @@ const DURATION_OPTIONS = [
     { days: 180, labelRu: '6 месяцев', labelEn: '6 months' },
     { days: 365, labelRu: '1 год', labelEn: '1 year' },
 ];
-
-// ─── Toast (slides up from bottom, Telegram style, fixed above tab bar) ───
-function Toast({ message, type = 'success', onDone }: { message: string; type?: 'success' | 'error'; onDone: () => void }) {
-    const [phase, setPhase] = useState<'in' | 'hold' | 'out'>('in');
-
-    useEffect(() => {
-        const t1 = setTimeout(() => setPhase('hold'), 50);
-        const t2 = setTimeout(() => setPhase('out'), 2800);
-        const t3 = setTimeout(() => onDone(), 3350);
-        return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-    }, [onDone]);
-
-    const translateY =
-        phase === 'in' ? 'translateY(100px)' :
-            phase === 'out' ? 'translateY(100px)' :
-                'translateY(0)';
-
-    const opacity = phase === 'hold' ? 1 : 0;
-    const accent = type === 'error' ? '#ff3b30' : '#30d158';
-    const icon = type === 'error' ? '✕' : '✓';
-
-    return (
-        <div style={{
-            position: 'fixed',
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 160px)',
-            left: 16,
-            right: 16,
-            transform: translateY,
-            opacity,
-            transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
-            zIndex: 99998,
-            pointerEvents: 'none',
-        }}>
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '13px 16px',
-                borderRadius: 18,
-                background: 'rgba(18,18,24,0.88)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 600,
-                boxShadow: `0 8px 32px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.08)`,
-                border: `1px solid rgba(255,255,255,0.10)`,
-                letterSpacing: '-0.01em',
-            }}>
-                <div style={{
-                    width: 26, height: 26, borderRadius: '50%',
-                    background: accent,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: `0 0 10px ${accent}88`,
-                    fontSize: 13, fontWeight: 800, color: 'white',
-                }}>
-                    {icon}
-                </div>
-                <span style={{ flex: 1 }}>{message}</span>
-            </div>
-        </div>
-    );
-}
 
 // ─── Custom Duration Picker (Bottom Sheet) ───
 function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (days: number) => void; isRu: boolean }) {
@@ -192,8 +128,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
     const [initialPaymentMethods, setInitialPaymentMethods] = useState({ stars: true, crypto: true, card: true });
 
     const [isLoading, setIsLoading] = useState(false);
-    const [toast, setToast] = useState<string | null>(null);
-    const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
     const hasUnsavedPlans = useMemo(() => {
         if (plans.length !== initialPlans.length) return true;
@@ -210,6 +144,23 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         paymentMethods.card !== initialPaymentMethods.card;
 
     const hasUnsavedChanges = welcomeText !== initialWelcomeText || hasUnsavedPlans || hasUnsavedPaymentMethods;
+
+    // ── Bridge to AppShell's SaveFAB via body dataset ──────────────────────
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        document.body.dataset.unsaved = hasUnsavedChanges ? 'true' : 'false';
+    }, [hasUnsavedChanges]);
+
+    // Clean up flags when view unmounts
+    useEffect(() => {
+        return () => {
+            if (typeof document === 'undefined') return;
+            document.body.dataset.unsaved = 'false';
+            document.body.dataset.saving = 'false';
+            document.body.dataset.savesuccess = 'false';
+            delete (window as any).__handleSave;
+        };
+    }, []);
 
     const loadData = useCallback(async () => {
         if (typeof window === 'undefined' || !WebApp.initData) return;
@@ -247,6 +198,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
     const handleSaveAll = useCallback(async () => {
         if (!WebApp.initData) return;
         setIsLoading(true);
+        document.body.dataset.saving = 'true';
 
         try {
             if (welcomeText !== initialWelcomeText || hasUnsavedPaymentMethods) {
@@ -258,7 +210,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                 if (res.ok) {
                     const saved = await res.json();
                     setInitialWelcomeText(welcomeText);
-                    // Read payment methods back from API response to avoid local state desync
                     const savedPaymentMethods = saved?.settings?.paymentMethods || paymentMethods;
                     setInitialPaymentMethods({ ...savedPaymentMethods });
                     setPaymentMethods({ ...savedPaymentMethods });
@@ -294,18 +245,28 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
             setPlans(newPlansState);
             setInitialPlans(JSON.parse(JSON.stringify(newPlansState)));
 
-            // Show animated toast instead of WebApp.showAlert
-            setToastType('success');
-            setToast(t.settingsSaved);
+            // Signal success to AppShell FAB
+            document.body.dataset.saving = 'false';
+            document.body.dataset.savesuccess = 'true';
+            // hasUnsavedChanges will become false now — FAB shows checkmark for 1.5 s then AppShell hides it
+            setTimeout(() => {
+                document.body.dataset.savesuccess = 'false';
+            }, 1700);
+
             setTimeout(() => router.refresh(), 500);
         } catch (e) {
             console.error('[SettingsView] handleSaveAll error:', e);
-            setToastType('error');
-            setToast(t.settingsSaveError);
+            document.body.dataset.saving = 'false';
+            document.body.dataset.savesuccess = 'false';
         } finally {
             setIsLoading(false);
         }
-    }, [API_URL, botId, welcomeText, initialWelcomeText, hasUnsavedPaymentMethods, paymentMethods, initialPaymentMethods, plans, t.settingsSaved, t.settingsSaveError, router]);
+    }, [API_URL, botId, welcomeText, initialWelcomeText, hasUnsavedPaymentMethods, paymentMethods, initialPaymentMethods, plans, router]);
+
+    // Register save handler for FAB in AppShell
+    useEffect(() => {
+        (window as any).__handleSave = handleSaveAll;
+    }, [handleSaveAll]);
 
     // Wire Telegram native MainButton is removed per user request
     useEffect(() => {
@@ -376,66 +337,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', paddingBottom: 96 }}>
-            {/* Toast — slides up from bottom, fixed, never scrolls */}
-            {toast && <Toast message={toast} type={toastType} onDone={() => setToast(null)} />}
-
-            {/* Bottom Save Bar — fixed above the tab-bar, slides up when there are unsaved changes */}
-            <div style={{
-                position: 'fixed',
-                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
-                left: 12,
-                right: 12,
-                zIndex: 9997,
-                transform: hasUnsavedChanges ? 'translateY(0)' : 'translateY(calc(100% + 120px))',
-                opacity: hasUnsavedChanges ? 1 : 0,
-                transition: 'transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.25s ease',
-                pointerEvents: hasUnsavedChanges ? 'auto' : 'none',
-            }}>
-                <div style={{
-                    padding: '10px 12px',
-                    borderRadius: 20,
-                    background: 'rgba(18,18,24,0.88)',
-                    backdropFilter: 'blur(24px)',
-                    WebkitBackdropFilter: 'blur(24px)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                }}>
-                    <div style={{ flex: 1, paddingLeft: 4 }}>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)', lineHeight: 1.3 }}>
-                            {isRu ? 'Есть несохранённые изменения' : 'You have unsaved changes'}
-                        </p>
-                    </div>
-                    <button
-                        onClick={handleSaveAll}
-                        disabled={isLoading}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '11px 20px',
-                            borderRadius: 14,
-                            border: 'none',
-                            cursor: isLoading ? 'not-allowed' : 'pointer',
-                            background: 'var(--tg-accent, #3390ec)',
-                            color: 'white',
-                            fontSize: 14,
-                            fontWeight: 700,
-                            transition: 'transform 0.15s, opacity 0.15s',
-                            transform: isLoading ? 'scale(0.93)' : 'scale(1)',
-                            opacity: isLoading ? 0.7 : 1,
-                            letterSpacing: '-0.01em',
-                        }}
-                    >
-                        {isLoading
-                            ? <Loader2 size={16} className="animate-spin" />
-                            : <Save size={16} />}
-                        {isRu ? 'Сохранить' : 'Save'}
-                    </button>
-                </div>
-            </div>
 
             {/* Header */}
             <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -479,7 +380,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         }}
                         onBlur={e => {
                             e.target.style.borderColor = 'color-mix(in srgb, var(--tg-hint) 12%, transparent)';
-                            window.scrollTo(0, 0); // scroll fix
+                            window.scrollTo(0, 0);
                         }}
                     />
                     <p style={{ fontSize: 11, color: 'var(--tg-hint)', marginTop: 8, paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 4, opacity: 0.8 }}>
@@ -610,8 +511,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     </button>
                 </div>
             </section>
-
-            {/* Save Button is now Top-Right */}
 
             {/* Danger Zone */}
             <section style={{ ...S.section, border: '0.5px solid rgba(255,59,48,0.25)' }}>

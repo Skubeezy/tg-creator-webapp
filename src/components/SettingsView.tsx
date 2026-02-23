@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Sparkles, MessageSquare, Tag, Trash2, PlusCircle, Save } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ArrowLeft, Sparkles, MessageSquare, Tag, Trash2, PlusCircle, Save, Loader2, Wallet } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { TranslationDict } from '@/lib/translations';
 
@@ -9,6 +9,7 @@ interface Plan {
     id?: string;
     durationDays: number;
     price: number;
+    currency?: string;
     isNew?: boolean;
     isChanged?: boolean;
 }
@@ -17,7 +18,35 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
     const [welcomeText, setWelcomeText] = useState(t.loading || "Загрузка...");
     const [aiSystemPrompt, setAiSystemPrompt] = useState("");
     const [plans, setPlans] = useState<Plan[]>([]);
+    const [paymentMethods, setPaymentMethods] = useState({ stars: true, crypto: true, card: true });
+
+    // Initial state tracking for the global save banner
+    const [initialWelcomeText, setInitialWelcomeText] = useState("");
+    const [initialAiSystemPrompt, setInitialAiSystemPrompt] = useState("");
+    const [initialPlans, setInitialPlans] = useState<Plan[]>([]);
+    const [initialPaymentMethods, setInitialPaymentMethods] = useState({ stars: true, crypto: true, card: true });
+
     const [isLoading, setIsLoading] = useState(false);
+
+    // Deep compare plans to detect unsaved changes
+    const hasUnsavedPlans = useMemo(() => {
+        if (plans.length !== initialPlans.length) return true;
+        for (let i = 0; i < plans.length; i++) {
+            const p1 = plans[i];
+            const p2 = initialPlans[i];
+            if (p1.durationDays !== p2.durationDays || p1.price !== p2.price || p1.currency !== p2.currency || p1.isNew || p1.isChanged) {
+                return true;
+            }
+        }
+        return false;
+    }, [plans, initialPlans]);
+
+    const hasUnsavedPaymentMethods =
+        paymentMethods.stars !== initialPaymentMethods.stars ||
+        paymentMethods.crypto !== initialPaymentMethods.crypto ||
+        paymentMethods.card !== initialPaymentMethods.card;
+
+    const hasUnsavedChanges = welcomeText !== initialWelcomeText || aiSystemPrompt !== initialAiSystemPrompt || hasUnsavedPlans || hasUnsavedPaymentMethods;
 
     const loadData = useCallback(async () => {
         if (typeof window !== 'undefined' && WebApp.initData) {
@@ -41,16 +70,30 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                                 const confData = await confRes.json();
                                 if (confData.aiConfig?.systemPrompt) {
                                     setAiSystemPrompt(confData.aiConfig.systemPrompt);
+                                    setInitialAiSystemPrompt(confData.aiConfig.systemPrompt);
                                 }
                             }
                         } catch (e) { }
 
                         const rawPlans = bot.subscriptionPlans || [];
-                        setPlans(rawPlans.map((p: any) => ({
+                        const mappedPlans = rawPlans.map((p: any) => ({
                             id: p.id,
                             durationDays: p.durationDays,
-                            price: Number(p.price)
-                        })).sort((a: Plan, b: Plan) => a.durationDays - b.durationDays));
+                            price: Number(p.price),
+                            currency: 'USD'
+                        })).sort((a: Plan, b: Plan) => a.durationDays - b.durationDays);
+
+                        setPlans(mappedPlans);
+                        setInitialPlans(JSON.parse(JSON.stringify(mappedPlans))); // Deep copy for initial state
+
+                        const bSettings = bot.settings as any;
+                        const wText = bSettings?.welcomeText || "🌟 Welcome!";
+                        setWelcomeText(wText);
+                        setInitialWelcomeText(wText);
+
+                        const pMethods = bSettings?.paymentMethods || { stars: true, crypto: true, card: true };
+                        setPaymentMethods(pMethods);
+                        setInitialPaymentMethods({ ...pMethods });
                     }
                 }
             } catch (e) {
@@ -63,67 +106,71 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         loadData();
     }, [loadData]);
 
-    const handleSaveGeneral = async () => {
+    const handleSaveAll = async () => {
         if (!WebApp.initData) return;
         setIsLoading(true);
         WebApp.MainButton.showProgress();
-        try {
-            const res = await fetch(`${API_URL}/me/config`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${WebApp.initData}`
-                },
-                body: JSON.stringify({ welcomeText, aiSystemPrompt })
-            });
-            if (res.ok) {
-                WebApp.showAlert(t.settingsSaved || "Настройки сохранены");
-            } else {
-                WebApp.showAlert("Ошибка при сохранении");
-            }
-        } catch (e) {
-            WebApp.showAlert("Ошибка сети");
-        } finally {
-            setIsLoading(false);
-            WebApp.MainButton.hideProgress();
-        }
-    };
 
-    const handleSavePlan = async (plan: Plan, index: number) => {
-        if (!WebApp.initData) return;
         try {
-            if (plan.isNew) {
-                const res = await fetch(`${API_URL}/me/bots/${botId}/plans`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${WebApp.initData}`
-                    },
-                    body: JSON.stringify({ durationDays: plan.durationDays, price: plan.price })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const newPlans = [...plans];
-                    newPlans[index] = { ...data.plan, price: Number(data.plan.price) };
-                    setPlans(newPlans);
-                }
-            } else if (plan.id && plan.isChanged) {
-                const res = await fetch(`${API_URL}/me/plans/${plan.id}`, {
+            // 1. Save Text, AI Prompt, and Payment Configs
+            if (welcomeText !== initialWelcomeText || aiSystemPrompt !== initialAiSystemPrompt || hasUnsavedPaymentMethods) {
+                const res = await fetch(`${API_URL}/me/config`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${WebApp.initData}`
                     },
-                    body: JSON.stringify({ durationDays: plan.durationDays, price: plan.price })
+                    body: JSON.stringify({ welcomeText, aiSystemPrompt, paymentMethods })
                 });
                 if (res.ok) {
-                    const newPlans = [...plans];
-                    newPlans[index].isChanged = false;
-                    setPlans(newPlans);
+                    setInitialWelcomeText(welcomeText);
+                    setInitialAiSystemPrompt(aiSystemPrompt);
+                    setInitialPaymentMethods({ ...paymentMethods });
                 }
             }
+
+            // 2. Save individual plans
+            let newPlansState = [...plans];
+
+            for (let i = 0; i < plans.length; i++) {
+                const plan = plans[i];
+                if (plan.isNew) {
+                    const res = await fetch(`${API_URL}/me/bots/${botId}/plans`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${WebApp.initData}`
+                        },
+                        body: JSON.stringify({ durationDays: plan.durationDays, price: plan.price, currency: plan.currency || 'XTR' })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        newPlansState[i] = { ...data.plan, price: Number(data.plan.price), isNew: false, isChanged: false };
+                    }
+                } else if (plan.id && plan.isChanged) {
+                    const res = await fetch(`${API_URL}/me/plans/${plan.id}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${WebApp.initData}`
+                        },
+                        body: JSON.stringify({ durationDays: plan.durationDays, price: plan.price, currency: plan.currency || 'XTR' })
+                    });
+                    if (res.ok) {
+                        newPlansState[i].isChanged = false;
+                    }
+                }
+            }
+
+            setPlans(newPlansState);
+            setInitialPlans(JSON.parse(JSON.stringify(newPlansState)));
+
+            WebApp.showAlert(t.settingsSaved || "Настройки успешно сохранены!");
         } catch (e) {
-            WebApp.showAlert("Ошибка сохранения тарифа");
+            WebApp.showAlert("Ошибка при сохранении");
+        } finally {
+            setIsLoading(false);
+            WebApp.MainButton.hideProgress();
         }
     };
 
@@ -152,7 +199,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
     };
 
     const handleAddPlanClick = () => {
-        setPlans([...plans, { durationDays: 30, price: 100, isNew: true }]);
+        setPlans([...plans, { durationDays: 30, price: 10, currency: 'USD', isNew: true }]);
     };
 
     const handleDeleteBot = () => {
@@ -212,13 +259,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         value={welcomeText}
                         onChange={(e) => setWelcomeText(e.target.value)}
                     />
-                    <button
-                        onClick={handleSaveGeneral}
-                        disabled={isLoading}
-                        className="mt-3 w-full bg-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-text-color)] rounded-xl py-3 font-semibold active:opacity-80 transition-opacity"
-                    >
-                        {t.saveSettings || "Сохранить настройки"}
-                    </button>
                 </div>
             </section>
 
@@ -238,13 +278,50 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         placeholder="Ты полезный ИИ-помощник..."
                         onChange={(e) => setAiSystemPrompt(e.target.value)}
                     />
-                    <button
-                        onClick={handleSaveGeneral}
-                        disabled={isLoading}
-                        className="mt-3 w-full bg-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-text-color)] rounded-xl py-3 font-semibold active:opacity-80 transition-opacity"
-                    >
-                        {t.saveSettings || "Сохранить настройки"}
-                    </button>
+                </div>
+            </section>
+
+            {/* Payment Methods */}
+            <section className="tg-card !p-0 overflow-hidden">
+                <div className="p-4 border-b border-black/5 dark:border-white/5 flex items-center gap-2">
+                    <Wallet size={18} className="opacity-60" />
+                    <h2 className="font-bold">{t.isRu ? "Способы оплаты" : "Payment Methods"}</h2>
+                </div>
+                <div className="p-4 flex flex-col gap-3">
+                    <p className="text-xs opacity-60 mb-2">
+                        {t.isRu ? "Выберите доступные способы оплаты для ваших подписчиков. Как минимум 1 должен быть включен." : "Choose available payment methods for your subscribers. At least 1 must be active."}
+                    </p>
+
+                    {[
+                        { id: 'stars', label: t.isRu ? "Telegram Stars (⭐️)" : "Telegram Stars (⭐️)", key: 'stars' },
+                        { id: 'crypto', label: t.isRu ? "Криптовалюта (CryptoPay)" : "Crypto (CryptoPay)", key: 'crypto' },
+                        { id: 'card', label: t.isRu ? "Банковская карта (Stripe)" : "Bank Card (Stripe)", key: 'card' },
+                    ].map((method) => {
+                        const isChecked = (paymentMethods as any)[method.key];
+                        return (
+                            <div key={method.id} className="flex items-center justify-between p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                                <span className="font-medium text-sm">{method.label}</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                            const newVal = e.target.checked;
+                                            const newMethods = { ...paymentMethods, [method.key]: newVal };
+                                            // Ensure at least 1 is active
+                                            if (!newMethods.stars && !newMethods.crypto && !newMethods.card) {
+                                                WebApp.showAlert(t.isRu ? "Нельзя отключить все способы оплаты!" : "Cannot disable all payment methods!");
+                                                return;
+                                            }
+                                            setPaymentMethods(newMethods);
+                                        }}
+                                    />
+                                    <div className="w-11 h-6 bg-black/20 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--tg-theme-button-color)]"></div>
+                                </label>
+                            </div>
+                        )
+                    })}
                 </div>
             </section>
 
@@ -252,7 +329,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
             <section className="tg-card !p-0 overflow-hidden">
                 <div className="p-4 border-b border-black/5 dark:border-white/5 flex items-center gap-2">
                     <Tag size={18} className="opacity-60" />
-                    <h2 className="font-bold">{t.subscriptionPlans || "Тарифы подписки (Telegram Stars)"}</h2>
+                    <h2 className="font-bold">{t.subscriptionPlans || "Тарифы подписки"}</h2>
                 </div>
 
                 <div className="p-4 flex flex-col gap-4">
@@ -279,6 +356,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                                     </select>
                                 </div>
                                 <div className="flex items-center gap-2 bg-black/10 dark:bg-white/10 rounded-lg p-1 px-3">
+                                    <span className="font-bold text-[var(--tg-theme-link-color)] mr-1">$</span>
                                     <input
                                         type="number"
                                         value={plan.price}
@@ -290,16 +368,10 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                                         }}
                                         className="w-16 bg-transparent text-right outline-none font-bold text-lg"
                                     />
-                                    <Sparkles size={16} className="text-yellow-500" />
                                 </div>
                             </div>
 
                             <div className="flex justify-end items-center gap-2 mt-2">
-                                {(plan.isNew || plan.isChanged) && (
-                                    <button onClick={() => handleSavePlan(plan, i)} className="text-blue-500 flex items-center gap-1 text-sm font-medium px-2 py-1 bg-blue-500/10 rounded-md">
-                                        <Save size={14} /> Сохранить
-                                    </button>
-                                )}
                                 <button onClick={() => handleDeletePlan(i)} className="text-red-500 flex items-center gap-1 text-sm font-medium px-2 py-1 bg-red-500/10 rounded-md">
                                     <Trash2 size={14} /> Удалить
                                 </button>
@@ -333,6 +405,28 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     </button>
                 </div>
             </section>
-        </div>
+
+            {/* Global Save Banner */}
+            {
+                hasUnsavedChanges && (
+                    <div className="fixed bottom-0 left-0 w-full z-50 p-4 save-banner-anim-enter pointer-events-none">
+                        <div className="pointer-events-auto bg-[var(--glass-bg)] backdrop-blur-xl border border-[var(--glass-border)] rounded-2xl p-4 flex items-center justify-between shadow-[0_10px_40px_rgba(0,0,0,0.15)] max-w-sm mx-auto w-full">
+                            <div className="flex flex-col">
+                                <span className="font-bold text-[15px]">Несохраненные изменения</span>
+                                <span className="text-xs opacity-60">Пожалуйста, сохраните настройки.</span>
+                            </div>
+                            <button
+                                onClick={handleSaveAll}
+                                disabled={isLoading}
+                                className="bg-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-text-color)] px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50"
+                            >
+                                {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                Сохранить
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }

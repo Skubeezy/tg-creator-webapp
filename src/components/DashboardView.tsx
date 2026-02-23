@@ -1,8 +1,9 @@
 'use client';
 
-import { Activity, Users, Bot, TrendingUp, Sparkles, MessageCircle, UserPlus, Settings, ArrowRight, Zap, X } from 'lucide-react';
+import { Activity, Users, Bot, TrendingUp, Sparkles, MessageCircle, UserPlus, Settings, ArrowRight, Zap, X, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import WebApp from '@twa-dev/sdk';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { TranslationDict } from '@/lib/translations';
 
 const TIERS = [
@@ -31,8 +32,12 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
         lifetimeRevenue: 0,
         activeSubs: 0,
         monthlyMrr: 0,
-        commissionRate: 15
+        commissionRate: 15,
+        botId: null as string | null
     });
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [broadcastText, setBroadcastText] = useState('');
+    const [isSending, setIsSending] = useState(false);
     const [showWelcome, setShowWelcome] = useState(false);
     const [showCommissionModal, setShowCommissionModal] = useState(false);
     const [animated, setAnimated] = useState(false);
@@ -56,6 +61,16 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                     if (res.ok) {
                         const data = await res.json();
                         setStats(data);
+
+                        if (data.botId) {
+                            const analyticsRes = await fetch(`${API_URL}/me/bots/${data.botId}/analytics`, {
+                                headers: { 'Authorization': `Bearer ${WebApp.initData}` }
+                            });
+                            if (analyticsRes.ok) {
+                                const aData = await analyticsRes.json();
+                                setChartData(aData.chartData);
+                            }
+                        }
                     }
                 }
             } catch (e) {
@@ -73,6 +88,32 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
     const tier = getCurrentTier(stats.lifetimeRevenue);
     const waterLevel = getWaterLevel(stats.lifetimeRevenue);
     const nextTier = TIERS.find(t => t.rate < tier.rate);
+
+    const handleSendBroadcast = async () => {
+        if (!broadcastText.trim() || !stats.botId) return;
+        setIsSending(true);
+        try {
+            const res = await fetch(`${API_URL}/me/bots/${stats.botId}/broadcast`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${WebApp.initData}`
+                },
+                body: JSON.stringify({ text: broadcastText })
+            });
+            const data = await res.json();
+            if (data.success) {
+                WebApp.showAlert(`✅ Успешно отправлено: ${data.result.successCount} фанатам.`);
+                setBroadcastText('');
+            } else {
+                WebApp.showAlert('❌ Ошибка отправки: ' + data.error);
+            }
+        } catch (e) {
+            WebApp.showAlert('❌ Не удалось отправить рассылку');
+        } finally {
+            setIsSending(false);
+        }
+    };
 
     // ─── Welcome ───
     if (showWelcome) {
@@ -190,21 +231,70 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                     </div>
                     <div className="text-[28px] font-bold" style={{ letterSpacing: '-0.03em' }}>${stats.monthlyMrr.toLocaleString()}</div>
                     <div className="mt-3 h-[28px] relative overflow-hidden">
-                        <svg className="w-full h-full" viewBox="0 0 100 28" preserveAspectRatio="none">
-                            <path d={stats.monthlyMrr > 0
-                                ? "M0 24 L14 18 L28 22 L42 12 L56 16 L70 8 L84 10 L100 4"
-                                : "M0 24 L100 24"}
-                                fill="none"
-                                stroke={stats.monthlyMrr > 0 ? 'rgba(0, 122, 255, 0.35)' : 'var(--tg-separator)'}
-                                strokeWidth="2" strokeLinecap="round"
-                                className={`chart-line ${animated ? 'drawn' : ''}`} />
-                        </svg>
+                        {chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData}>
+                                    <Area
+                                        type="monotone"
+                                        dataKey="revenueTotal"
+                                        stroke={stats.monthlyMrr > 0 ? 'rgba(0, 122, 255, 0.5)' : 'var(--tg-separator)'}
+                                        fill="transparent"
+                                        strokeWidth={2}
+                                        isAnimationActive={animated}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <svg className="w-full h-full" viewBox="0 0 100 28" preserveAspectRatio="none">
+                                <path d={stats.monthlyMrr > 0
+                                    ? "M0 24 L14 18 L28 22 L42 12 L56 16 L70 8 L84 10 L100 4"
+                                    : "M0 24 L100 24"}
+                                    fill="none"
+                                    stroke={stats.monthlyMrr > 0 ? 'rgba(0, 122, 255, 0.35)' : 'var(--tg-separator)'}
+                                    strokeWidth="2" strokeLinecap="round"
+                                    className={`chart-line ${animated ? 'drawn' : ''}`} />
+                            </svg>
+                        )}
                     </div>
                 </div>
             </div>
 
+            {/* Broadcast Box */}
+            <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.4s' }}>
+                <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-[8px] flex items-center justify-center"
+                        style={{ background: 'rgba(52, 199, 89, 0.12)', color: '#34c759' }}>
+                        <Send size={16} strokeWidth={2.2} className="ml-0.5" />
+                    </div>
+                    <span className="text-[15px] font-semibold">{isRu ? 'Массовая Рассылка' : 'Broadcast Message'}</span>
+                </div>
+                <p className="text-[13px] mb-3 leading-snug" style={{ color: 'var(--tg-hint)' }}>
+                    {isRu
+                        ? 'Отправьте сообщение всем вашим фанатам, чтобы повысить продажи или сообщить новости.'
+                        : 'Send a message to all your fans to boost sales or share updates.'}
+                </p>
+                <textarea
+                    rows={3}
+                    placeholder={isRu ? "Введите текст сообщения..." : "Type your message..."}
+                    className="w-full bg-transparent border border-[var(--tg-separator)] outline-none rounded-[12px] p-3 text-[14px] resize-none mb-3"
+                    value={broadcastText}
+                    onChange={e => setBroadcastText(e.target.value)}
+                    style={{ color: 'var(--tg-text)' }}
+                />
+                <button
+                    onClick={handleSendBroadcast}
+                    disabled={isSending || !broadcastText.trim()}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-[12px] text-white font-semibold text-[15px] disabled:opacity-50 transition-all"
+                    style={{ backgroundColor: 'var(--tg-accent)' }}
+                >
+                    {isSending
+                        ? (isRu ? 'Отправка...' : 'Sending...')
+                        : (isRu ? 'Отправить Рассылку' : 'Send Broadcast')}
+                </button>
+            </div>
+
             {/* Tier Progress Row */}
-            <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.3s' }}>
+            <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.5s' }}>
                 <button className="flex items-center justify-between w-full" onClick={() => setShowCommissionModal(true)}>
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-[8px] flex items-center justify-center"

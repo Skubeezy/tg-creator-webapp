@@ -127,7 +127,7 @@ export default function AppShell() {
                     <BotsView API_URL={API_URL} t={t} />
                 </div>
                 <div className="carousel-slide">
-                    <PayoutsView t={t} />
+                    <PayoutsView API_URL={API_URL} t={t} />
                 </div>
             </div>
 

@@ -208,7 +208,7 @@ export default function AppShell() {
     };
 
     const t = useMemo(() => getTranslation(langCode), [langCode]);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tg-creator-saas.onrender.com/api/bots";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tg-creator-saas.vercel.app/api/bots";
     const tabLabels = useMemo(() => [t.dashboard, t.myBots, t.payouts], [t]);
 
     const handleTabChange = useCallback((idx: number) => {

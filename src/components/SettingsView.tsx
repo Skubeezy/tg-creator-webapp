@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, Tag, Trash2, PlusCircle, Check, ChevronDown, MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, Tag, Trash2, PlusCircle, Check, ChevronDown, MessageSquare, Sparkles, Radio, AlertCircle } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { TranslationDict } from '@/lib/translations';
 
@@ -256,6 +256,11 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
     const [welcomeText, setWelcomeText] = useState('');
     const [plans, setPlans] = useState<Plan[]>([]);
 
+    // Channel selection state
+    const [channels, setChannels] = useState<Array<{ id: string; telegramChatId: string; title: string | null }>>([]);
+    const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+    const [initialChannelId, setInitialChannelId] = useState<string | null>(null);
+
     const [initialWelcomeText, setInitialWelcomeText] = useState('');
     const [initialPlans, setInitialPlans] = useState<Plan[]>([]);
 
@@ -270,7 +275,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         return false;
     }, [plans, initialPlans]);
 
-    const hasUnsavedChanges = welcomeText !== initialWelcomeText || hasUnsavedPlans;
+    const hasUnsavedChanges = welcomeText !== initialWelcomeText || hasUnsavedPlans || selectedChannelId !== initialChannelId;
 
     // ── Bridge to AppShell's SaveFAB via body dataset ──────────────────────
     useEffect(() => {
@@ -306,6 +311,17 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     setPlans(rawPlans);
                     setInitialPlans(JSON.parse(JSON.stringify(rawPlans)));
 
+                    // Load channels
+                    const rawChannels = (bot.channels || []).map((c: any) => ({
+                        id: c.id,
+                        telegramChatId: c.telegramChatId?.toString() ?? '',
+                        title: c.title || null,
+                    }));
+                    setChannels(rawChannels);
+                    const storedChannelId = (bot.settings as any)?.selectedChannelId ?? (rawChannels[0]?.id ?? null);
+                    setSelectedChannelId(storedChannelId);
+                    setInitialChannelId(storedChannelId);
+
                     const bSettings = bot.settings as any;
                     const wText = bSettings?.welcomeText || bSettings?.welcomeTextEn || bSettings?.welcomeTextRu || (isRu ? 'Добро пожаловать!' : 'Welcome!');
 
@@ -336,6 +352,18 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     const errText = await res.text().catch(() => '');
                     console.error('[SettingsView] PATCH /me/config failed:', res.status, errText);
                     throw new Error(`Save failed: ${res.status}`);
+                }
+            }
+
+            // Save selected channel if changed
+            if (selectedChannelId && selectedChannelId !== initialChannelId) {
+                const res = await fetch(`${API_URL}/me/bots/${botId}/channel`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
+                    body: JSON.stringify({ channelId: selectedChannelId })
+                });
+                if (res.ok) {
+                    setInitialChannelId(selectedChannelId);
                 }
             }
 
@@ -498,6 +526,85 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         <Sparkles size={12} />
                         {t.autoTranslateHint}
                     </p>
+                </div>
+            </section>
+
+            {/* Connected Channel */}
+            <section style={S.section}>
+                <div style={S.header}>
+                    <div style={S.iconBox('#5856d6', 'rgba(88,86,214,0.12)')}>
+                        <Radio size={16} strokeWidth={2} />
+                    </div>
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>
+                        {isRu ? 'Канал' : 'Channel'}
+                    </span>
+                </div>
+                <div style={{ padding: '10px 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {channels.length === 0 ? (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                            borderRadius: 14, background: 'rgba(255,59,48,0.07)',
+                            border: '1px solid rgba(255,59,48,0.2)',
+                        }}>
+                            <AlertCircle size={18} style={{ color: '#ff3b30', flexShrink: 0 }} />
+                            <span style={{ fontSize: 13, color: '#ff3b30' }}>
+                                {isRu
+                                    ? 'Бот не добавлен ни в один канал. Добавьте бота как администратора в канал, чтобы он мог открывать доступ после оплаты.'
+                                    : 'Bot is not in any channel. Add the bot as an admin to a channel so it can grant access after payment.'}
+                            </span>
+                        </div>
+                    ) : (
+                        channels.map((ch) => {
+                            const isSelected = selectedChannelId === ch.id;
+                            return (
+                                <button
+                                    key={ch.id}
+                                    type="button"
+                                    onClick={() => setSelectedChannelId(ch.id)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 12,
+                                        padding: '12px 14px', borderRadius: 14, textAlign: 'left',
+                                        background: isSelected
+                                            ? 'color-mix(in srgb, var(--tg-accent) 10%, transparent)'
+                                            : 'color-mix(in srgb, var(--tg-hint) 6%, transparent)',
+                                        border: isSelected
+                                            ? '1.5px solid color-mix(in srgb, var(--tg-accent) 35%, transparent)'
+                                            : '1px solid transparent',
+                                        cursor: 'pointer', fontFamily: 'inherit',
+                                        transition: 'background 0.15s, border-color 0.15s',
+                                    }}
+                                >
+                                    {/* Radio dot */}
+                                    <div style={{
+                                        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                                        border: isSelected ? '2px solid var(--tg-accent)' : '2px solid color-mix(in srgb, var(--tg-hint) 40%, transparent)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        transition: 'border-color 0.15s',
+                                    }}>
+                                        {isSelected && (
+                                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--tg-accent)' }} />
+                                        )}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 15, fontWeight: isSelected ? 600 : 400, color: isSelected ? 'var(--tg-accent)' : 'var(--tg-text)', transition: 'color 0.15s' }}>
+                                            {ch.title || (isRu ? 'Без названия' : 'Unnamed Channel')}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
+                                            ID: {ch.telegramChatId}
+                                        </div>
+                                    </div>
+                                    {isSelected && <Check size={16} style={{ color: 'var(--tg-accent)', flexShrink: 0 }} strokeWidth={2.5} />}
+                                </button>
+                            );
+                        })
+                    )}
+                    {channels.length > 0 && (
+                        <p style={{ fontSize: 11, color: 'var(--tg-hint)', paddingLeft: 4, marginTop: 2, opacity: 0.7 }}>
+                            {isRu
+                                ? 'Выберите канал, доступ к которому открывается после оплаты'
+                                : 'Select the channel fans get access to after payment'}
+                        </p>
+                    )}
                 </div>
             </section>
 

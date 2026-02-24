@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, ChevronRight, Bot, Key, Loader2, CheckCircle, ArrowLeft, ExternalLink } from 'lucide-react';
 import { SettingsView } from './SettingsView';
 import { TranslationDict } from '@/lib/translations';
@@ -17,6 +17,36 @@ interface BotData {
     plans: { period: string; price: number }[];
 }
 
+// ─── Bot Avatar (mirrors fan webapp's CreatorAvatar) ──────────────────────────
+
+function BotAvatar({ url, name, size = 44 }: { url?: string; name: string; size?: number }) {
+    const [failed, setFailed] = useState(false);
+    const initials = (name || '?').slice(0, 2).toUpperCase();
+    const r = Math.max(10, Math.round(size * 0.32));
+
+    return (
+        <div style={{
+            width: size, height: size, borderRadius: r, flexShrink: 0,
+            overflow: 'hidden', position: 'relative',
+            background: 'color-mix(in srgb, var(--tg-accent) 14%, transparent)',
+        }}>
+            {url && !failed ? (
+                <img src={url} alt={name} onError={() => setFailed(true)}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+                <div style={{
+                    width: '100%', height: '100%', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    fontSize: Math.round(size * 0.35), fontWeight: 700,
+                    color: 'var(--tg-accent)',
+                }}>
+                    {initials}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }) {
     const isRu = t.isRu;
     const router = useRouter();
@@ -29,42 +59,59 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
     const [botInfo, setBotInfo] = useState<BotData | null>(null);
     const [error, setError] = useState('');
     const [viewAnim, setViewAnim] = useState('');
+    const [animated, setAnimated] = useState(false);
+    const syncedRef = useRef(false);
 
-    // Load bots from backend API
-    useEffect(() => {
-        const fetchBots = async () => {
-            try {
-                if (typeof window !== 'undefined' && WebApp.initData) {
-                    const res = await fetch(`${API_URL}/me/bots`, {
-                        headers: { 'Authorization': `Bearer ${WebApp.initData}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.bots) {
-                            setBots(data.bots.map((b: any) => ({
-                                id: b.id,
-                                name: (b.settings as any)?.name || 'Bot',
-                                username: b.username || '',
-                                photoUrl: (b.settings as any)?.photoUrl || null,
-                                plans: (b.subscriptionPlans || []).map((p: any) => ({
-                                    period: p.durationDays === 7
-                                        ? (isRu ? '1 неделя' : '1 Week')
-                                        : p.durationDays === 30
-                                            ? (isRu ? '1 месяц' : '1 Month')
-                                            : p.durationDays === 90
-                                                ? (isRu ? '3 месяца' : '3 Months')
-                                                : `${p.durationDays} ${isRu ? 'дн.' : 'days'}`,
-                                    price: Number(p.price)
-                                }))
-                            })));
-                        }
+    const fetchBots = async () => {
+        try {
+            if (typeof window !== 'undefined' && WebApp.initData) {
+                const res = await fetch(`${API_URL}/me/bots`, {
+                    headers: { 'Authorization': `Bearer ${WebApp.initData}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.bots) {
+                        setBots(data.bots.map((b: any) => ({
+                            id: b.id,
+                            name: (b.settings as any)?.name || b.username || 'Bot',
+                            username: b.username || '',
+                            photoUrl: (b.settings as any)?.photoUrl || undefined,
+                            plans: (b.subscriptionPlans || []).map((p: any) => ({
+                                period: p.durationDays === 7
+                                    ? (isRu ? '1 неделя' : '1 Week')
+                                    : p.durationDays === 30
+                                        ? (isRu ? '1 месяц' : '1 Month')
+                                        : p.durationDays === 90
+                                            ? (isRu ? '3 месяца' : '3 Months')
+                                            : `${p.durationDays} ${isRu ? 'дн.' : 'days'}`,
+                                price: Number(p.price)
+                            }))
+                        })));
                     }
                 }
-            } catch (e) {
-                console.error("Failed to load bots", e);
             }
-        };
-        fetchBots();
+        } catch (e) {
+            console.error('Failed to load bots', e);
+        }
+    };
+
+    // Load bots from backend API, then sync and reload
+    useEffect(() => {
+        fetchBots().then(() => {
+            // Fire-and-forget sync: call sync endpoint, then re-fetch to pick up updated names/photos
+            if (!syncedRef.current && typeof window !== 'undefined' && WebApp.initData) {
+                syncedRef.current = true;
+                fetch(`${API_URL}/me/bots/sync`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${WebApp.initData}` }
+                }).then(r => {
+                    if (r.ok) fetchBots(); // refresh list with new data
+                }).catch(() => { });
+            }
+        });
+        // Trigger stagger entrance animation
+        setTimeout(() => setAnimated(true), 80);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [API_URL, isRu]);
 
     if (selectedBotId !== null) {
@@ -166,7 +213,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                             <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-[10px] flex items-center justify-center"
-                                        style={{ background: 'rgba(51, 144, 236, 0.1)', color: 'var(--tg-accent)' }}>
+                                        style={{ background: 'color-mix(in srgb, var(--tg-accent) 10%, transparent)', color: 'var(--tg-accent)' }}>
                                         <Key size={20} strokeWidth={2} />
                                     </div>
                                     <div>
@@ -205,15 +252,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                 {wizardStep === 'preview' && botInfo && (
                     <div className="flex flex-col gap-4 view-enter">
                         <div className="tg-card flex flex-col items-center gap-3 py-6">
-                            {botInfo.photoUrl ? (
-                                <img src={botInfo.photoUrl} alt={botInfo.name}
-                                    className="w-16 h-16 rounded-full object-cover" />
-                            ) : (
-                                <div className="w-16 h-16 rounded-full flex items-center justify-center text-white"
-                                    style={{ backgroundColor: 'var(--tg-accent)' }}>
-                                    <Bot size={32} />
-                                </div>
-                            )}
+                            <BotAvatar url={botInfo.photoUrl} name={botInfo.name} size={64} />
                             <div className="text-center">
                                 <p className="text-[17px] font-bold">{botInfo.name}</p>
                                 <p className="text-[13px]" style={{ color: 'var(--tg-link)' }}>{botInfo.username}</p>
@@ -261,15 +300,16 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
         <div className={`flex flex-col gap-4 w-full ${viewAnim}`}>
             <h1 className="text-[22px] font-bold px-1" style={{ letterSpacing: '-0.02em' }}>{t.myBots}</h1>
 
+            {/* Add new bot */}
             <div className="tg-card !p-0 overflow-hidden">
                 <button
                     className="list-row w-full gap-3"
                     style={{ color: 'var(--tg-accent)' }}
                     onClick={() => { setViewAnim('view-enter'); setShowWizard(true); }}
                 >
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                        style={{ background: 'rgba(51, 144, 236, 0.1)' }}>
-                        <Plus size={22} strokeWidth={2.2} />
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center"
+                        style={{ background: 'color-mix(in srgb, var(--tg-accent) 10%, transparent)' }}>
+                        <Plus size={22} strokeWidth={2.2} style={{ color: 'var(--tg-accent)' }} />
                     </div>
                     <span className="text-[15px] font-medium">{t.createNewBot}</span>
                 </button>
@@ -278,24 +318,22 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
             {bots.length > 0 && (
                 <div className="tg-card !p-0 overflow-hidden">
                     {bots.map((bot, idx) => (
-                        <div key={bot.id}>
+                        <div key={bot.id}
+                            className="bot-row-enter"
+                            style={{ animationDelay: `${idx * 0.06}s` }}>
                             <button
                                 onClick={() => { setViewAnim('view-enter'); setSelectedBotId(bot.id); }}
                                 className="list-row w-full justify-between"
                             >
                                 <div className="flex items-center gap-3">
-                                    {bot.photoUrl ? (
-                                        <img src={bot.photoUrl} alt={bot.name}
-                                            className="w-11 h-11 rounded-full object-cover shrink-0" />
-                                    ) : (
-                                        <div className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0"
-                                            style={{ backgroundColor: 'var(--tg-accent)' }}>
-                                            <Bot size={24} strokeWidth={2} />
-                                        </div>
-                                    )}
+                                    <BotAvatar url={bot.photoUrl} name={bot.name} size={44} />
                                     <div className="text-left">
                                         <span className="text-[15px] font-semibold leading-tight block">{bot.name}</span>
-                                        <span className="text-[13px]" style={{ color: 'var(--tg-link)' }}>{bot.username}</span>
+                                        {bot.username && (
+                                            <span className="text-[13px]" style={{ color: 'var(--tg-hint)' }}>
+                                                {bot.username.startsWith('@') ? bot.username : `@${bot.username}`}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 <ChevronRight size={18} style={{ color: 'var(--tg-hint)', opacity: 0.5 }} />
@@ -303,6 +341,24 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                             {idx < bots.length - 1 && <div className="list-separator" />}
                         </div>
                     ))}
+                </div>
+            )}
+
+            {bots.length === 0 && animated && (
+                <div className="tg-card flex flex-col items-center gap-3 py-10 stat-card-anim visible"
+                    style={{ textAlign: 'center' }}>
+                    <div className="w-14 h-14 rounded-[16px] flex items-center justify-center"
+                        style={{ background: 'color-mix(in srgb, var(--tg-hint) 10%, transparent)' }}>
+                        <Bot size={28} style={{ color: 'var(--tg-hint)' }} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                        <p className="text-[15px] font-semibold" style={{ color: 'var(--tg-text)' }}>
+                            {isRu ? 'Нет ботов' : 'No bots yet'}
+                        </p>
+                        <p className="text-[13px] mt-1" style={{ color: 'var(--tg-hint)' }}>
+                            {isRu ? 'Создайте первого бота выше' : 'Create your first bot above'}
+                        </p>
+                    </div>
                 </div>
             )}
 

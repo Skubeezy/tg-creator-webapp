@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ArrowLeft, Tag, Trash2, PlusCircle, Check, ChevronDown, MessageSquare, Sparkles, Wallet } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ArrowLeft, Tag, Trash2, PlusCircle, Check, ChevronDown, MessageSquare, Sparkles } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { TranslationDict } from '@/lib/translations';
 
@@ -29,7 +29,6 @@ function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (d
     const [open, setOpen] = useState(false);
     const selected = DURATION_OPTIONS.find(o => o.days === value) || DURATION_OPTIONS[2];
 
-    // Lock body scroll when modal is open
     useEffect(() => {
         if (open) {
             document.body.style.overflow = 'hidden';
@@ -66,24 +65,17 @@ function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (d
                 <ChevronDown size={16} style={{ color: 'var(--tg-hint)' }} />
             </button>
 
-            {/* Bottom Sheet Modal */}
             {open && typeof document !== 'undefined' && require('react-dom').createPortal(
                 <div className="fixed inset-0 z-[99999] flex flex-col justify-end bg-black/40 backdrop-blur-[2px]"
                     style={{ animation: 'fadeIn 0.2s ease-out' }}
                     onClick={() => setOpen(false)}>
-
-                    {/* Sheet Content */}
                     <div className="w-full bg-[var(--tg-bg)] rounded-t-[28px] p-5 pb-8 shadow-2xl relative"
                         style={{ animation: 'slideUp 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)' }}
                         onClick={e => e.stopPropagation()}>
-
-                        {/* Drag Handle */}
                         <div className="w-10 h-1 rounded-full bg-[var(--tg-separator)] mx-auto mb-5 opacity-70" />
-
                         <h3 className="text-[19px] font-bold text-center mb-6" style={{ color: 'var(--tg-text)' }}>
                             {isRu ? 'Продолжительность' : 'Duration'}
                         </h3>
-
                         <div className="flex flex-col gap-2">
                             {DURATION_OPTIONS.map((opt) => {
                                 const isSelected = opt.days === value;
@@ -94,9 +86,9 @@ function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (d
                                         onClick={() => { onChange(opt.days); setOpen(false); }}
                                         className="flex items-center justify-between p-4 rounded-[16px] transition-all active:scale-[0.98]"
                                         style={{
-                                            background: isSelected ? 'color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 12%, transparent)' : 'color-mix(in srgb, var(--tg-hint) 5%, transparent)',
-                                            color: isSelected ? 'var(--tg-theme-button-color, #3390ec)' : 'var(--tg-text)',
-                                            border: isSelected ? '1px solid color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 30%, transparent)' : '1px solid transparent'
+                                            background: isSelected ? 'color-mix(in srgb, var(--tg-accent) 12%, transparent)' : 'color-mix(in srgb, var(--tg-hint) 5%, transparent)',
+                                            color: isSelected ? 'var(--tg-accent)' : 'var(--tg-text)',
+                                            border: isSelected ? '1px solid color-mix(in srgb, var(--tg-accent) 30%, transparent)' : '1px solid transparent'
                                         }}
                                     >
                                         <span className="text-[16px]" style={{ fontWeight: isSelected ? 700 : 500 }}>
@@ -115,17 +107,157 @@ function DurationPicker({ value, onChange, isRu }: { value: number; onChange: (d
     );
 }
 
+// ─── Price Picker (iOS Stars-style slider) ────────────────────────────────────
+
+const PRICE_MIN = 1;
+const PRICE_MAX = 200;
+const PRICE_STEP = 1;
+
+function PricePicker({ value, onChange, isRu }: { value: number; onChange: (price: number) => void; isRu: boolean }) {
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState(value);
+
+    const handleOpen = () => { setDraft(value); setOpen(true); };
+    const handleAccept = () => { onChange(draft); setOpen(false); };
+
+    useEffect(() => {
+        if (open) {
+            document.body.style.overflow = 'hidden';
+            return () => { document.body.style.overflow = ''; };
+        }
+    }, [open]);
+
+    // Keep draft in sync when value changes externally
+    useEffect(() => { setDraft(value); }, [value]);
+
+    const pct = ((draft - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100;
+
+    return (
+        <>
+            {/* Inline price display / tap target */}
+            <button
+                type="button"
+                onClick={handleOpen}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '10px 14px', borderRadius: 14, flexShrink: 0,
+                    background: 'color-mix(in srgb, var(--tg-accent) 8%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--tg-accent) 20%, transparent)',
+                    cursor: 'pointer', transition: 'transform 0.1s',
+                    fontFamily: 'inherit',
+                }}
+                onPointerDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+                <span style={{ fontWeight: 700, color: 'var(--tg-accent)', fontSize: 15 }}>$</span>
+                <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--tg-text)', minWidth: 28, textAlign: 'right' }}>
+                    {value}
+                </span>
+            </button>
+
+            {/* Bottom Sheet Slider */}
+            {open && typeof document !== 'undefined' && require('react-dom').createPortal(
+                <div
+                    className="fixed inset-0 z-[99999] flex flex-col justify-end"
+                    style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)', animation: 'fadeIn 0.2s ease-out' }}
+                    onClick={handleAccept}
+                >
+                    <div
+                        className="w-full rounded-t-[28px] p-6 pb-10"
+                        style={{
+                            background: 'var(--tg-bg)',
+                            boxShadow: '0 -8px 48px rgba(0,0,0,0.22)',
+                            animation: 'slideUp 0.32s cubic-bezier(0.22,0.61,0.36,1)',
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Drag handle */}
+                        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--tg-separator)', margin: '0 auto 20px', opacity: 0.6 }} />
+
+                        {/* Title */}
+                        <p style={{ textAlign: 'center', fontSize: 17, fontWeight: 700, color: 'var(--tg-text)', marginBottom: 32 }}>
+                            {isRu ? 'Стоимость подписки' : 'Subscription Price'}
+                        </p>
+
+                        {/* Large price display */}
+                        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+                            <span style={{
+                                fontSize: 52, fontWeight: 800, letterSpacing: '-0.04em',
+                                color: 'var(--tg-accent)',
+                                display: 'inline-block',
+                                transition: 'transform 0.12s cubic-bezier(0.34,1.56,0.64,1)',
+                                transform: 'scale(1)',
+                            }}>
+                                ${draft}
+                            </span>
+                            <span style={{ fontSize: 16, color: 'var(--tg-hint)', display: 'block', marginTop: 2 }}>
+                                {isRu ? 'за период' : 'per period'}
+                            </span>
+                        </div>
+
+                        {/* Slider */}
+                        <div style={{ position: 'relative', padding: '12px 0', marginBottom: 8 }}>
+                            {/* Track background */}
+                            <div style={{
+                                height: 6, borderRadius: 3, background: 'color-mix(in srgb, var(--tg-hint) 15%, transparent)',
+                                position: 'relative', overflow: 'hidden',
+                            }}>
+                                {/* Filled portion */}
+                                <div style={{
+                                    position: 'absolute', left: 0, top: 0, bottom: 0,
+                                    width: `${pct}%`,
+                                    background: 'var(--tg-accent)',
+                                    borderRadius: 3,
+                                    transition: 'width 0.06s ease',
+                                }} />
+                            </div>
+                            <input
+                                type="range"
+                                min={PRICE_MIN}
+                                max={PRICE_MAX}
+                                step={PRICE_STEP}
+                                value={draft}
+                                onChange={e => {
+                                    setDraft(Number(e.target.value));
+                                    try { WebApp.HapticFeedback.selectionChanged(); } catch (_) { }
+                                }}
+                                style={{
+                                    position: 'absolute', top: 0, left: 0,
+                                    width: '100%', height: '100%',
+                                    opacity: 0, cursor: 'pointer',
+                                    margin: 0, padding: 0,
+                                }}
+                            />
+                        </div>
+
+                        {/* Min / Max labels */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 28 }}>
+                            <span style={{ fontSize: 12, color: 'var(--tg-hint)' }}>${PRICE_MIN}</span>
+                            <span style={{ fontSize: 12, color: 'var(--tg-hint)' }}>${PRICE_MAX}</span>
+                        </div>
+
+                        {/* Done button */}
+                        <button className="action-btn" onClick={handleAccept}>
+                            {isRu ? 'Готово' : 'Done'}
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </>
+    );
+}
+
 
 export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL: string, botId: string, onBack: () => void, onDeleted: () => void, t: TranslationDict }) {
     const isRu = t.isRu;
     const router = require('next/navigation').useRouter();
     const [welcomeText, setWelcomeText] = useState('');
     const [plans, setPlans] = useState<Plan[]>([]);
-    const [paymentMethods, setPaymentMethods] = useState({ stars: true, crypto: true, card: true });
 
     const [initialWelcomeText, setInitialWelcomeText] = useState('');
     const [initialPlans, setInitialPlans] = useState<Plan[]>([]);
-    const [initialPaymentMethods, setInitialPaymentMethods] = useState({ stars: true, crypto: true, card: true });
 
     const [isLoading, setIsLoading] = useState(false);
 
@@ -138,12 +270,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         return false;
     }, [plans, initialPlans]);
 
-    const hasUnsavedPaymentMethods =
-        paymentMethods.stars !== initialPaymentMethods.stars ||
-        paymentMethods.crypto !== initialPaymentMethods.crypto ||
-        paymentMethods.card !== initialPaymentMethods.card;
-
-    const hasUnsavedChanges = welcomeText !== initialWelcomeText || hasUnsavedPlans || hasUnsavedPaymentMethods;
+    const hasUnsavedChanges = welcomeText !== initialWelcomeText || hasUnsavedPlans;
 
     // ── Bridge to AppShell's SaveFAB via body dataset ──────────────────────
     useEffect(() => {
@@ -184,10 +311,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
 
                     setWelcomeText(wText);
                     setInitialWelcomeText(wText);
-
-                    const pMethods = bSettings?.paymentMethods || { stars: true, crypto: true, card: true };
-                    setPaymentMethods(pMethods);
-                    setInitialPaymentMethods({ ...pMethods });
                 }
             }
         } catch (e) { console.error('Failed to load bot data', e); }
@@ -201,18 +324,14 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         document.body.dataset.saving = 'true';
 
         try {
-            if (welcomeText !== initialWelcomeText || hasUnsavedPaymentMethods) {
+            if (welcomeText !== initialWelcomeText) {
                 const res = await fetch(`${API_URL}/me/config`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
-                    body: JSON.stringify({ welcomeText, paymentMethods })
+                    body: JSON.stringify({ welcomeText })
                 });
                 if (res.ok) {
-                    const saved = await res.json();
                     setInitialWelcomeText(welcomeText);
-                    const savedPaymentMethods = saved?.settings?.paymentMethods || paymentMethods;
-                    setInitialPaymentMethods({ ...savedPaymentMethods });
-                    setPaymentMethods({ ...savedPaymentMethods });
                 } else {
                     const errText = await res.text().catch(() => '');
                     console.error('[SettingsView] PATCH /me/config failed:', res.status, errText);
@@ -245,14 +364,9 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
             setPlans(newPlansState);
             setInitialPlans(JSON.parse(JSON.stringify(newPlansState)));
 
-            // Signal success to AppShell FAB
             document.body.dataset.saving = 'false';
             document.body.dataset.savesuccess = 'true';
-            // hasUnsavedChanges will become false now — FAB shows checkmark for 1.5 s then AppShell hides it
-            setTimeout(() => {
-                document.body.dataset.savesuccess = 'false';
-            }, 1700);
-
+            setTimeout(() => { document.body.dataset.savesuccess = 'false'; }, 1700);
             setTimeout(() => router.refresh(), 500);
         } catch (e) {
             console.error('[SettingsView] handleSaveAll error:', e);
@@ -261,14 +375,13 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         } finally {
             setIsLoading(false);
         }
-    }, [API_URL, botId, welcomeText, initialWelcomeText, hasUnsavedPaymentMethods, paymentMethods, initialPaymentMethods, plans, router]);
+    }, [API_URL, botId, welcomeText, initialWelcomeText, plans, router]);
 
     // Register save handler for FAB in AppShell
     useEffect(() => {
         (window as any).__handleSave = handleSaveAll;
     }, [handleSaveAll]);
 
-    // Wire Telegram native MainButton is removed per user request
     useEffect(() => {
         if (typeof window === 'undefined') return;
         WebApp.MainButton.hide();
@@ -375,9 +488,7 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         }}
                         value={welcomeText}
                         onChange={e => setWelcomeText(e.target.value)}
-                        onFocus={e => {
-                            e.target.style.borderColor = 'var(--tg-accent)';
-                        }}
+                        onFocus={e => { e.target.style.borderColor = 'var(--tg-accent)'; }}
                         onBlur={e => {
                             e.target.style.borderColor = 'color-mix(in srgb, var(--tg-hint) 12%, transparent)';
                             window.scrollTo(0, 0);
@@ -385,54 +496,8 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     />
                     <p style={{ fontSize: 11, color: 'var(--tg-hint)', marginTop: 8, paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 4, opacity: 0.8 }}>
                         <Sparkles size={12} />
-                        Текст будет автоматически переведен на язык пользователя
+                        {t.autoTranslateHint}
                     </p>
-                </div>
-            </section>
-
-            {/* Payment Methods */}
-            <section style={S.section}>
-                <div style={S.header}>
-                    <div style={S.iconBox('#ff9500', 'rgba(255,149,0,0.12)')}>
-                        <Wallet size={16} strokeWidth={2} />
-                    </div>
-                    <span style={{ fontWeight: 600, fontSize: 15 }}>{t.paymentMethods}</span>
-                </div>
-                <div style={{ padding: '10px 16px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {([
-                        { key: 'stars', label: 'Telegram Stars' },
-                        { key: 'crypto', label: isRu ? 'Крипто (CryptoPay)' : 'Crypto (CryptoPay)' },
-                        { key: 'card', label: isRu ? 'Банковская карта' : 'Bank Card (Stripe)' },
-                    ] as { key: 'stars' | 'crypto' | 'card'; label: string }[]).map(method => {
-                        const isChecked = paymentMethods[method.key];
-                        return (
-                            <label key={method.key} style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                padding: '11px 12px', borderRadius: 12, cursor: 'pointer',
-                                background: isChecked ? 'color-mix(in srgb, var(--tg-accent) 6%, transparent)' : 'transparent',
-                                transition: 'background 0.2s',
-                            }}>
-                                <span style={{ fontSize: 14, fontWeight: 500 }}>{method.label}</span>
-                                <div style={{
-                                    width: 44, height: 26, borderRadius: 13, cursor: 'pointer',
-                                    background: isChecked ? 'var(--tg-accent)' : 'color-mix(in srgb, var(--tg-hint) 25%, transparent)',
-                                    position: 'relative', transition: 'background 0.25s cubic-bezier(0.4,0,0.2,1)',
-                                    flexShrink: 0,
-                                }} onClick={() => {
-                                    const newMethods = { ...paymentMethods, [method.key]: !isChecked };
-                                    if (!newMethods.stars && !newMethods.crypto && !newMethods.card) return;
-                                    setPaymentMethods(newMethods);
-                                }}>
-                                    <div style={{
-                                        position: 'absolute', top: 3, left: isChecked ? 21 : 3,
-                                        width: 20, height: 20, borderRadius: '50%', background: 'white',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                        transition: 'left 0.25s cubic-bezier(0.4,0,0.2,1)',
-                                    }} />
-                                </div>
-                            </label>
-                        );
-                    })}
                 </div>
             </section>
 
@@ -451,9 +516,11 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                             background: 'color-mix(in srgb, var(--tg-hint) 6%, transparent)',
                             border: '1px solid color-mix(in srgb, var(--tg-hint) 10%, transparent)',
                             display: 'flex', flexDirection: 'column', gap: 10,
+                            animation: 'listItemIn 0.35s var(--ease-spring) both',
+                            animationDelay: `${i * 0.05}s`,
                         }}>
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                {/* Custom Duration Picker */}
+                                {/* Duration picker */}
                                 <DurationPicker
                                     value={plan.durationDays}
                                     isRu={isRu}
@@ -464,35 +531,28 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                                     }}
                                 />
 
-                                {/* Price input */}
-                                <div style={{
-                                    display: 'flex', alignItems: 'center', gap: 4,
-                                    padding: '10px 14px', borderRadius: 14, flexShrink: 0,
-                                    background: 'color-mix(in srgb, var(--tg-hint) 8%, transparent)',
-                                    border: '1px solid color-mix(in srgb, var(--tg-hint) 12%, transparent)',
-                                }}>
-                                    <span style={{ fontWeight: 700, color: 'var(--tg-accent)', fontSize: 15 }}>$</span>
-                                    <input
-                                        type="number"
-                                        value={plan.price}
-                                        onChange={e => {
-                                            const newPlans = [...plans];
-                                            newPlans[i] = { ...newPlans[i], price: Number(e.target.value), isChanged: true };
-                                            setPlans(newPlans);
-                                        }}
-                                        style={{
-                                            width: 52, background: 'transparent', border: 'none', outline: 'none',
-                                            fontWeight: 700, fontSize: 15, color: 'var(--tg-text)', textAlign: 'right',
-                                            fontFamily: 'inherit',
-                                        }}
-                                    />
-                                </div>
+                                {/* Price Picker — iOS Stars-style slider */}
+                                <PricePicker
+                                    value={plan.price}
+                                    isRu={isRu}
+                                    onChange={price => {
+                                        const newPlans = [...plans];
+                                        newPlans[i] = { ...newPlans[i], price, isChanged: true };
+                                        setPlans(newPlans);
+                                    }}
+                                />
 
+                                {/* Delete */}
                                 <button onClick={() => handleDeletePlan(i)} style={{
                                     width: 38, height: 38, borderRadius: 12, border: 'none', cursor: 'pointer',
                                     background: 'rgba(255,59,48,0.1)', color: '#ff3b30', flexShrink: 0,
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                }}>
+                                    transition: 'transform 0.1s, background 0.15s',
+                                }}
+                                    onPointerDown={e => e.currentTarget.style.transform = 'scale(0.9)'}
+                                    onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                                    onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                >
                                     <Trash2 size={16} strokeWidth={2} />
                                 </button>
                             </div>
@@ -525,8 +585,12 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         width: '100%', padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
                         background: 'rgba(255,59,48,0.1)', color: '#ff3b30',
                         fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        fontFamily: 'inherit',
-                    }}>
+                        fontFamily: 'inherit', transition: 'background 0.15s, transform 0.1s',
+                    }}
+                        onPointerDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+                        onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                        onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
                         <Trash2 size={16} />
                         {t.deleteBot}
                     </button>

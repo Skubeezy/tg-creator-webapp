@@ -20,120 +20,6 @@ function detectLowEnd(): boolean {
     return false;
 }
 
-// ─── Save FAB — elegant pill with animated success ring ──────────────────────
-
-type FABState = 'idle' | 'saving' | 'success';
-
-function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolean; onClick: () => void }) {
-    const isSaving = state === 'saving';
-    const isSuccess = state === 'success';
-    const [showCheck, setShowCheck] = useState(false);
-    const [ringVisible, setRingVisible] = useState(false);
-
-    useEffect(() => {
-        if (isSuccess) {
-            setShowCheck(true);
-            setRingVisible(true);
-            const t = setTimeout(() => setRingVisible(false), 600);
-            return () => clearTimeout(t);
-        }
-    }, [isSuccess]);
-
-    useEffect(() => {
-        if (!visible) {
-            const t = setTimeout(() => setShowCheck(false), 400);
-            return () => clearTimeout(t);
-        }
-    }, [visible]);
-
-    const accentColor = isSuccess ? 'var(--green, #34c759)' : 'var(--tg-accent, #007aff)';
-
-    return (
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-            {/* Success burst ring */}
-            {ringVisible && (
-                <div style={{
-                    position: 'absolute',
-                    inset: -2,
-                    borderRadius: '50%',
-                    border: `2px solid ${accentColor}`,
-                    animation: 'saveSuccessRing 0.55s ease-out forwards',
-                    pointerEvents: 'none',
-                }} />
-            )}
-
-            <button
-                onClick={onClick}
-                disabled={isSaving}
-                aria-label="Save settings"
-                style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: '50%',
-                    padding: 0,
-                    flexShrink: 0,
-                    border: `1.5px solid color-mix(in srgb, ${accentColor} 40%, transparent)`,
-                    cursor: isSaving ? 'default' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    pointerEvents: visible ? 'auto' : 'none',
-                    opacity: visible ? 1 : 0,
-                    transform: visible ? 'scale(1)' : 'scale(0.5)',
-                    transition: 'opacity 0.3s var(--ease-out, cubic-bezier(0.16,1,0.3,1)), transform 0.3s var(--ease-spring, cubic-bezier(0.175,0.885,0.32,1.275)), background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
-                    background: `color-mix(in srgb, ${accentColor} 12%, var(--glass-bg, rgba(255,255,255,0.85)))`,
-                    backdropFilter: 'blur(40px)',
-                    WebkitBackdropFilter: 'blur(40px)',
-                    boxShadow: isSuccess
-                        ? `0 0 0 0.5px color-mix(in srgb, var(--green) 30%, transparent), 0 6px 24px color-mix(in srgb, var(--green) 35%, transparent)`
-                        : `0 0 0 0.5px color-mix(in srgb, var(--tg-hint) 18%, transparent), 0 6px 24px rgba(0,0,0,0.16)`,
-                }}
-            >
-                {/* Inner sheen */}
-                <div style={{
-                    position: 'absolute', inset: 0, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 55%)',
-                    pointerEvents: 'none',
-                }} />
-
-                {/* Save / spin icon */}
-                <svg viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    style={{
-                        width: 20, height: 20, position: 'absolute',
-                        opacity: showCheck ? 0 : 0.9,
-                        animation: isSaving ? 'saveSpin 0.6s linear infinite' : 'none',
-                        transition: 'opacity 0.18s ease, stroke 0.25s ease',
-                    }}
-                >
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                    <polyline points="7 3 7 8 15 8" />
-                </svg>
-
-                {/* Checkmark — animated draw */}
-                <svg viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2.5"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    style={{
-                        width: 20, height: 20, position: 'absolute',
-                        opacity: showCheck ? 1 : 0,
-                        transform: showCheck ? 'scale(1)' : 'scale(0.5)',
-                        transition: 'opacity 0.18s ease 0.04s, transform 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.04s',
-                    }}
-                >
-                    <polyline points="4 13 9 18 20 7" style={{
-                        strokeDasharray: 28,
-                        strokeDashoffset: showCheck ? 0 : 28,
-                        transition: 'stroke-dashoffset 0.28s ease 0.08s',
-                    }} />
-                </svg>
-            </button>
-        </div>
-    );
-}
-
 // ─── AppShell ─────────────────────────────────────────────────────────────────
 
 export default function AppShell() {
@@ -144,20 +30,21 @@ export default function AppShell() {
     const [userName, setUserName] = useState<string>('');
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
     const [touchStartY, setTouchStartY] = useState<number | null>(null);
+    const trackRef = useRef<HTMLDivElement>(null);
 
-    // Save FAB
+    // Save state
     const [fabUnsaved, setFabUnsaved] = useState(false);
     const [fabSaving, setFabSaving] = useState(false);
     const [fabSuccess, setFabSuccess] = useState(false);
+    const [showCheck, setShowCheck] = useState(false);
 
-    const fabState: FABState = fabSaving ? 'saving' : fabSuccess ? 'success' : 'idle';
-    const fabVisible = fabUnsaved || fabSaving || fabSuccess;
+    const saveVisible = fabUnsaved || fabSaving || fabSuccess;
 
-    // Pill ref for imperative smooth positioning (avoids re-render jank)
+    // Pill indicator ref
     const pillRef = useRef<HTMLDivElement>(null);
-    const ITEM_W = 46;  // matches .tab-item width in CSS
-    const ITEM_GAP = 2; // matches gap: 2px in CSS
-    const PAD = 6;       // matches padding: 6px in CSS
+    const ITEM_W = 54;
+    const ITEM_GAP = 4;
+    const PAD = 8;
 
     useEffect(() => {
         const pill = pillRef.current;
@@ -166,7 +53,7 @@ export default function AppShell() {
         pill.style.left = `${left}px`;
     }, [activeIndex]);
 
-    // Watch body dataset for FAB signals from SettingsView
+    // Watch body dataset for save signals from SettingsView
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const sync = () => {
@@ -176,11 +63,23 @@ export default function AppShell() {
         };
         sync();
         const observer = new MutationObserver(sync);
-        observer.observe(document.body, { attributes: true, attributeFilter: ['data-unsaved', 'data-saving', 'data-savesuccess'] });
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['data-unsaved', 'data-saving', 'data-savesuccess'],
+        });
         return () => observer.disconnect();
     }, []);
 
-    const handleFabClick = useCallback(() => {
+    // Checkmark auto-hide
+    useEffect(() => {
+        if (fabSuccess) {
+            setShowCheck(true);
+            const t = setTimeout(() => setShowCheck(false), 700);
+            return () => clearTimeout(t);
+        }
+    }, [fabSuccess]);
+
+    const handleSaveClick = useCallback(() => {
         if (typeof window !== 'undefined' && (window as any).__handleSave) {
             (window as any).__handleSave();
         }
@@ -210,9 +109,12 @@ export default function AppShell() {
     const handleTouchStart = (e: React.TouchEvent) => {
         setTouchStartX(e.targetTouches[0].clientX);
         setTouchStartY(e.targetTouches[0].clientY);
+        // Promote to GPU composite layer only while swiping
+        trackRef.current?.classList.add('is-dragging');
     };
 
     const handleTouchEnd = (e: React.TouchEvent) => {
+        trackRef.current?.classList.remove('is-dragging');
         if (touchStartX === null || touchStartY === null) return;
         const dx = touchStartX - e.changedTouches[0].clientX;
         const dy = touchStartY - e.changedTouches[0].clientY;
@@ -250,10 +152,12 @@ export default function AppShell() {
     }
 
     const icons = [LayoutDashboard, Bot, Wallet];
+    const saveColor = fabSuccess ? 'var(--green, #34c759)' : 'var(--tg-accent, #007aff)';
 
     return (
         <main className="app-shell">
             <div
+                ref={trackRef}
                 className="carousel-track hide-scrollbar"
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
@@ -274,57 +178,88 @@ export default function AppShell() {
             </div>
 
             {/* ── Unified Bottom Bar ── */}
-            <div style={{
-                position: 'fixed',
-                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
-                left: 0,
-                right: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                zIndex: 100,
-                pointerEvents: 'none',
-                paddingInline: 16,
-            }}>
-                {/* Nav pill — icon only, compact */}
-                <div
-                    className="tab-bar-inner"
-                    style={{ pointerEvents: 'auto' }}
-                >
-                    {/* Active background squircle — positioned imperatively */}
-                    <div
-                        ref={pillRef}
-                        className="tab-pill"
-                        style={{
-                            top: 6,
-                            height: 40,
-                            width: 46,
-                            left: PAD,
-                        }}
-                    />
+            <div className="bottom-bar-wrap">
+                <div className={`bottom-bar-pill${saveVisible ? ' has-save' : ''}`}>
 
-                    {icons.map((Icon, idx) => {
-                        const isActive = activeIndex === idx;
-                        return (
-                            <button
-                                key={idx}
-                                className={`tab-item ${isActive ? 'active' : ''}`}
-                                onClick={() => handleTabChange(idx)}
-                                aria-label={['Dashboard', 'Bots', 'Payouts'][idx]}
+                    {/* Nav tabs */}
+                    <div className="bottom-bar-nav">
+                        {/* Sliding active indicator */}
+                        <div
+                            ref={pillRef}
+                            className="tab-pill"
+                            style={{ top: 8, height: 44, width: ITEM_W, left: PAD }}
+                        />
+
+                        {icons.map((Icon, idx) => {
+                            const isActive = activeIndex === idx;
+                            return (
+                                <button
+                                    key={idx}
+                                    className={`tab-item${isActive ? ' active' : ''}`}
+                                    onClick={() => handleTabChange(idx)}
+                                    aria-label={['Dashboard', 'Bots', 'Payouts'][idx]}
+                                >
+                                    <span className={isActive ? 'tab-icon' : ''}>
+                                        <Icon size={22} strokeWidth={isActive ? 2.4 : 1.7} />
+                                    </span>
+                                    <span className="tab-dot" />
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Save chip — slides in from the right */}
+                    <div className={`bottom-bar-save${saveVisible ? ' visible' : ''}`}>
+                        <div className="bottom-bar-divider" />
+
+                        <button
+                            className="save-chip"
+                            onClick={handleSaveClick}
+                            disabled={fabSaving}
+                            aria-label="Save"
+                            style={{ color: saveColor }}
+                        >
+                            {/* Disk icon */}
+                            <svg
+                                viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2"
+                                strokeLinecap="round" strokeLinejoin="round"
+                                className={`save-svg${(showCheck || fabSaving) ? ' out' : ''}`}
                             >
-                                <span className={isActive ? 'tab-icon' : ''}>
-                                    <Icon size={22} strokeWidth={isActive ? 2.4 : 1.7} />
-                                </span>
-                                <span className="tab-dot" />
-                            </button>
-                        );
-                    })}
-                </div>
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                <polyline points="17 21 17 13 7 13 7 21" />
+                                <polyline points="7 3 7 8 15 8" />
+                            </svg>
 
-                {/* Save FAB */}
-                <div style={{ pointerEvents: 'auto', flexShrink: 0 }}>
-                    <SaveFAB state={fabState} visible={fabVisible} onClick={handleFabClick} />
+                            {/* Spinner */}
+                            <svg
+                                viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2.2"
+                                strokeLinecap="round"
+                                className={`save-svg save-svg-spin${fabSaving ? ' in' : ''}`}
+                            >
+                                <circle cx="12" cy="12" r="9" strokeDasharray="14 42" />
+                            </svg>
+
+                            {/* Checkmark */}
+                            <svg
+                                viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2.5"
+                                strokeLinecap="round" strokeLinejoin="round"
+                                className={`save-svg${showCheck ? ' in' : ''}`}
+                            >
+                                <polyline
+                                    points="4 13 9 18 20 7"
+                                    style={{
+                                        strokeDasharray: 28,
+                                        strokeDashoffset: showCheck ? 0 : 28,
+                                        transition: 'stroke-dashoffset 0.2s ease 0.04s',
+                                    }}
+                                />
+                            </svg>
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </main>

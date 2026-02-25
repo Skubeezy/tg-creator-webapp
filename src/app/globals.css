@@ -56,13 +56,39 @@
 html.perf-low * {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  /* Kill ALL continuous/infinite animations to save CPU/GPU */
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.1s !important;
 }
 
-html.perf-low .glass-surface {
+/* Fix glass backgrounds when blur is disabled */
+html.perf-low .glass-surface,
+html.perf-low .tg-card,
+html.perf-low .bottom-bar-pill,
+html.perf-low .bottom-bar-wrap {
   background: var(--tg-bg) !important;
+}
+
+/* On low-end: skip the decorative sheen pseudo-element */
+html.perf-low .tg-card::before,
+html.perf-low .action-btn::before,
+html.perf-low .action-btn::after {
+  display: none !important;
+}
+
+/* On low-end: no box-shadow depth layers (expensive on GPU) */
+html.perf-low .tg-card,
+html.perf-low .bottom-bar-pill {
+  box-shadow: 0 0 0 0.5px var(--glass-border) !important;
+}
+
+/* On low-end: skip aurora shimmer + wave animations */
+html.perf-low .water-fill::before,
+html.perf-low .action-btn::before,
+html.perf-low .action-btn::after {
+  animation: none !important;
+  display: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -127,6 +153,8 @@ textarea {
   border: 0.5px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   position: relative;
+  /* Contain layout/style so card internals don't trigger ancestor reflow */
+  contain: layout style;
 }
 
 /* Shimmer card highlight */
@@ -159,6 +187,10 @@ textarea {
   flex: 1;
   height: 100%;
   transition: transform var(--dur-spring) var(--ease-out);
+  /* will-change promoted only while dragging via JS class .is-dragging */
+}
+
+.carousel-track.is-dragging {
   will-change: transform;
 }
 
@@ -174,42 +206,70 @@ textarea {
   touch-action: pan-y pinch-zoom;
   overscroll-behavior-y: none;
   overscroll-behavior-x: contain;
+  /* Isolate paint for inactive slides */
+  contain: layout style;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━ Tab Bar — minimal floating ━━━━━━━━━━━━━━━━━━━━━━━━ */
-.tab-bar-inner {
-  position: relative;
+/* ━━━━━━━━━━━━━━━━━━━━━━━━ Bottom Bar — unified iOS pill ━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Outer wrapper — centers the pill horizontally */
+.bottom-bar-wrap {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 100;
+  padding-inline: 20px;
+}
+
+/* The pill itself */
+.bottom-bar-pill {
   display: flex;
   align-items: center;
   border-radius: var(--radius-pill);
-  /* tightly packed — icon only */
-  padding: 6px;
-  gap: 2px;
   background: var(--glass-bg);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(44px) saturate(180%);
+  -webkit-backdrop-filter: blur(44px) saturate(180%);
   box-shadow:
-    0 0 0 0.5px color-mix(in srgb, var(--tg-hint) 18%, transparent),
-    0 8px 32px rgba(0, 0, 0, 0.18),
-    0 2px 6px rgba(0, 0, 0, 0.08);
+    0 0 0 0.5px color-mix(in srgb, var(--tg-hint) 16%, transparent),
+    0 10px 40px rgba(0, 0, 0, 0.16),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+  pointer-events: auto;
+  overflow: hidden;
+  /* Base: nav-only width */
+  padding: 8px;
+  gap: 0;
+  /* Smooth expand when save appears */
+  transition: padding 0.32s cubic-bezier(0.34, 1.32, 0.64, 1);
+}
+
+/* Nav section — contains the 3 tab buttons */
+.bottom-bar-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 /* Active squircle indicator behind icon */
 .tab-pill {
   position: absolute;
   border-radius: calc(var(--radius-pill) - 4px);
-  background: color-mix(in srgb, var(--tg-accent) 14%, transparent);
-  transition: transform 0.36s cubic-bezier(0.34, 1.32, 0.64, 1),
-    width 0.36s cubic-bezier(0.34, 1.32, 0.64, 1),
-    left 0.36s cubic-bezier(0.34, 1.32, 0.64, 1);
-  will-change: transform;
+  background: color-mix(in srgb, var(--tg-accent) 13%, transparent);
+  transition:
+    left 0.34s cubic-bezier(0.34, 1.32, 0.64, 1),
+    width 0.34s cubic-bezier(0.34, 1.32, 0.64, 1);
+  will-change: left;
   pointer-events: none;
 }
 
 .tab-item {
-  /* square-ish target, icon only */
-  width: 46px;
-  height: 40px;
+  width: 54px;
+  height: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -268,6 +328,102 @@ textarea {
   100% {
     transform: scale(1);
   }
+}
+
+/* ── Save section — slides in from right ── */
+
+.bottom-bar-save {
+  display: flex;
+  align-items: center;
+  /* collapsed: zero width, clipped */
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-width 0.32s cubic-bezier(0.34, 1.32, 0.64, 1),
+    opacity 0.22s ease;
+}
+
+.bottom-bar-save.visible {
+  max-width: 76px;
+  opacity: 1;
+}
+
+/* Thin hairline separator between nav and save */
+.bottom-bar-divider {
+  width: 0.5px;
+  height: 28px;
+  background: color-mix(in srgb, var(--tg-hint) 22%, transparent);
+  margin-inline: 6px;
+  flex-shrink: 0;
+}
+
+/* Save button */
+.save-chip {
+  width: 54px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius-pill) - 4px);
+  position: relative;
+  flex-shrink: 0;
+  transition: transform 0.12s var(--ease-spring), opacity 0.12s ease;
+}
+
+.save-chip:active {
+  transform: scale(0.82);
+  opacity: 0.7;
+}
+
+.save-chip:disabled {
+  pointer-events: none;
+}
+
+/* SVG icon layers */
+.save-svg {
+  width: 21px;
+  height: 21px;
+  position: absolute;
+  transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 1;
+  transform: scale(1);
+}
+
+.save-svg.out {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.save-svg.in {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Default hidden state for secondary icons */
+.save-svg:not(.out):not(.in) {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* First child (disk icon) visible by default */
+.save-chip>.save-svg:first-child {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.save-chip>.save-svg:first-child.out {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* Spinner rotation */
+.save-svg-spin {
+  animation: none;
+}
+
+.save-svg-spin.in {
+  animation: saveSpin 0.7s linear infinite;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━ Launch Screen ━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -403,52 +559,10 @@ textarea {
   }
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━ Save FAB animations ━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━ Save chip animations ━━━━━━━━━━━━━━━━━━━━━━━━ */
 @keyframes saveSpin {
-  0% {
-    transform: rotate(0deg) scale(0.9);
-  }
-
-  50% {
-    transform: rotate(200deg) scale(1.05);
-  }
-
-  100% {
-    transform: rotate(360deg) scale(0.9);
-  }
-}
-
-@keyframes saveButtonSlideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.5) translateX(16px);
-  }
-
   to {
-    opacity: 1;
-    transform: scale(1) translateX(0);
-  }
-}
-
-@keyframes saveCheckDraw {
-  from {
-    stroke-dashoffset: 28;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes saveSuccessRing {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.8;
-  }
-
-  100% {
-    transform: scale(1.7);
-    opacity: 0;
+    transform: rotate(360deg);
   }
 }
 

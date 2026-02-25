@@ -2,6 +2,7 @@
 
 import { Activity, Users, Bot, TrendingUp, Sparkles, MessageCircle, UserPlus, Settings, ArrowRight, Zap, X, Send } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import WebApp from '@twa-dev/sdk';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { TranslationDict } from '@/lib/translations';
@@ -36,23 +37,25 @@ function AnimatedNum({ value, prefix = '$', suffix = '' }: { value: number; pref
     const [displayed, setDisplayed] = useState(0);
     const rafRef = useRef<number>(0);
     const startRef = useRef<number | null>(null);
-    const duration = 1000;
+    const duration = 900;
+    // Skip animation on low-end devices — just show final value immediately
+    const isLowEnd = typeof document !== 'undefined' && document.documentElement.classList.contains('perf-low');
 
     useEffect(() => {
+        if (isLowEnd) { setDisplayed(value); return; }
         startRef.current = null;
         cancelAnimationFrame(rafRef.current);
-        const from = 0;
         const to = value;
         const step = (ts: number) => {
             if (!startRef.current) startRef.current = ts;
             const p = Math.min((ts - startRef.current) / duration, 1);
             const eased = 1 - Math.pow(1 - p, 3);
-            setDisplayed(Math.round((from + (to - from) * eased) * 100) / 100);
+            setDisplayed(Math.round((to * eased) * 100) / 100);
             if (p < 1) rafRef.current = requestAnimationFrame(step);
         };
         rafRef.current = requestAnimationFrame(step);
         return () => cancelAnimationFrame(rafRef.current);
-    }, [value]);
+    }, [value, isLowEnd]);
 
     return <span>{prefix}{displayed.toLocaleString()}{suffix}</span>;
 }
@@ -463,7 +466,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string; t: Tr
             </div>
 
             {/* Commission Modal */}
-            {showCommissionModal && typeof document !== 'undefined' && require('react-dom').createPortal(
+            {showCommissionModal && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
                     style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)', animation: 'fadeIn 0.2s ease-out' }}
                     onClick={() => setShowCommissionModal(false)}>

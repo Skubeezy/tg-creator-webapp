@@ -687,6 +687,18 @@ textarea {
   }
 }
 
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━ Settings Input (Legacy) ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .settings-input {
   width: 100%;

@@ -86,7 +86,20 @@ export const translations = {
         autoTranslateHint: "Text will be automatically translated into the user's language.",
         termsOfService: "Terms of Service",
         privacyPolicy: "Privacy Policy",
-        infoMenu: "ℹ️ About"
+        infoMenu: "ℹ️ About",
+        // Wallet
+        connectWallet: "Connect Wallet",
+        walletConnected: "Wallet Connected",
+        autoPayouts: "Auto-Payouts",
+        autoPayoutsOn: "Active — payouts are instant",
+        autoPayoutsOff: "Connect wallet to enable",
+        walletUsernameHint: "Your Telegram @username used in @CryptoBot",
+        saveWallet: "Save Wallet",
+        walletSaved: "Wallet saved!",
+        totalEarned: "Total Earned",
+        pendingPayout: "Pending",
+        instantPayouts: "Instant Payouts Enabled",
+        noWalletHint: "Connect your @CryptoBot wallet to receive payouts instantly when fans subscribe."
     },
     ru: {
         dashboard: "Дашборд",
@@ -175,7 +188,20 @@ export const translations = {
         autoTranslateHint: "Текст будет автоматически переведен на язык пользователя.",
         termsOfService: "Пользовательское соглашение",
         privacyPolicy: "Политика конфиденциальности",
-        infoMenu: "ℹ️ Информация"
+        infoMenu: "ℹ️ Информация",
+        // Wallet
+        connectWallet: "Подключить кошелёк",
+        walletConnected: "Кошелёк подключён",
+        autoPayouts: "Авто-выплаты",
+        autoPayoutsOn: "Активно — выплаты мгновенные",
+        autoPayoutsOff: "Подключите кошелёк для включения",
+        walletUsernameHint: "Ваш Telegram @username в @CryptoBot",
+        saveWallet: "Сохранить кошелёк",
+        walletSaved: "Кошелёк сохранён!",
+        totalEarned: "Заработано всего",
+        pendingPayout: "В обработке",
+        instantPayouts: "Мгновенные выплаты включены",
+        noWalletHint: "Подключите кошелёк @CryptoBot, чтобы получать выплаты мгновенно при каждой подписке фаната."
     }
 };
 

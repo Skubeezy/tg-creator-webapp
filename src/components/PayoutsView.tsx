@@ -137,6 +137,32 @@ export function PayoutsView({ API_URL, t }: { API_URL: string; t: TranslationDic
 
     useEffect(() => { fetchData(); }, [API_URL]);
 
+    const handleRetryPayouts = async () => {
+        setIsSaving(true);
+        try {
+            const res = await fetch(`${API_URL.replace('/bots', '')}/me/payouts/retry-pending`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${WebApp.initData}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (data.succeeded > 0) {
+                    WebApp.showAlert(isRu ? `Успешно выплачено: ${data.succeeded}` : `Successfully paid: ${data.succeeded}`);
+                    fetchData(); // refresh list
+                } else if (data.failed > 0) {
+                    WebApp.showAlert(isRu ? `Ошибка выплаты (${data.failed}). Убедитесь, что бот @CryptoBot запущен.` : `Payout failed (${data.failed}). Make sure you started @CryptoBot.`);
+                } else {
+                    WebApp.showAlert(isRu ? 'Нет выплат для повтора' : 'No payouts to retry');
+                }
+            } else {
+                WebApp.showAlert(data.error || t.networkError);
+            }
+        } catch {
+            WebApp.showAlert(t.networkError);
+        }
+        finally { setIsSaving(false); }
+    };
+
     const handleSave = async () => {
         const cleaned = inputWallet.trim().replace(/^@/, '');
         if (!cleaned || cleaned.length < 3) {
@@ -223,6 +249,19 @@ export function PayoutsView({ API_URL, t }: { API_URL: string; t: TranslationDic
                             <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em' }}>{history.length}</div>
                         </div>
                     </div>
+
+                    {/* Retry Button if there are pending payouts */}
+                    {pendingPayout > 0 && (
+                        <button onClick={handleRetryPayouts} disabled={isSaving}
+                            style={{
+                                marginTop: 18, width: '100%', padding: '10px', borderRadius: 10,
+                                background: 'rgba(255,149,0,0.15)', color: 'var(--orange)',
+                                fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            }}>
+                            <Clock size={16} />
+                            {isRu ? `Повторить выплату ($${pendingPayout.toFixed(2)})` : `Retry Payout ($${pendingPayout.toFixed(2)})`}
+                        </button>
+                    )}
                 </div>
             </div>
 

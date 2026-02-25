@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, Tag, Trash2, PlusCircle, Check, ChevronDown, MessageSquare, Sparkles, Radio, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { ArrowLeft, Tag, Trash2, PlusCircle, Check, ChevronDown, MessageSquare, Sparkles, Radio, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { TranslationDict } from '@/lib/translations';
 
@@ -13,6 +13,8 @@ interface Plan {
     isNew?: boolean;
     isChanged?: boolean;
 }
+
+type SaveStatus = 'idle' | 'saving' | 'saved';
 
 // ─── Duration options ─────────────────────────────────────────────────────────
 const DURATION_OPTIONS = [
@@ -118,7 +120,6 @@ function PricePicker({ value, onChange, isRu }: { value: number; onChange: (pric
 
     const pct = ((draft - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100;
 
-    // Tick marks for the slider
     const tickCount = 10;
     const ticks = Array.from({ length: tickCount + 1 }, (_, i) => i / tickCount);
 
@@ -154,7 +155,6 @@ function PricePicker({ value, onChange, isRu }: { value: number; onChange: (pric
                             {isRu ? 'Стоимость подписки' : 'Subscription Price'}
                         </p>
 
-                        {/* Large price display */}
                         <div style={{ textAlign: 'center', marginBottom: 36 }}>
                             <span style={{
                                 fontSize: 56, fontWeight: 800, letterSpacing: '-0.05em',
@@ -168,13 +168,10 @@ function PricePicker({ value, onChange, isRu }: { value: number; onChange: (pric
                             </span>
                         </div>
 
-                        {/* Slider with tick marks */}
                         <div style={{ position: 'relative', marginBottom: 10 }}>
-                            {/* Track */}
                             <div style={{ height: 6, borderRadius: 3, background: 'color-mix(in srgb, var(--tg-hint) 14%, transparent)', position: 'relative', overflow: 'hidden', marginBottom: 8 }}>
                                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`, background: 'var(--tg-accent)', borderRadius: 3, transition: 'width 0.05s ease' }} />
                             </div>
-                            {/* Tick marks */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px', marginBottom: 4 }}>
                                 {ticks.map((t, i) => {
                                     const tickVal = Math.round(PRICE_MIN + t * (PRICE_MAX - PRICE_MIN));
@@ -216,41 +213,100 @@ function PricePicker({ value, onChange, isRu }: { value: number; onChange: (pric
 export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL: string; botId: string; onBack: () => void; onDeleted: () => void; t: TranslationDict }) {
     const isRu = t.isRu;
     const router = require('next/navigation').useRouter();
+
     const [welcomeText, setWelcomeText] = useState('');
     const [plans, setPlans] = useState<Plan[]>([]);
     const [channels, setChannels] = useState<Array<{ id: string; telegramChatId: string; title: string | null }>>([]);
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-    const [initialChannelId, setInitialChannelId] = useState<string | null>(null);
-    const [initialWelcomeText, setInitialWelcomeText] = useState('');
-    const [initialPlans, setInitialPlans] = useState<Plan[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
 
-    const hasUnsavedPlans = useMemo(() => {
-        if (plans.length !== initialPlans.length) return true;
-        for (let i = 0; i < plans.length; i++) {
-            const p1 = plans[i], p2 = initialPlans[i];
-            if (p1.durationDays !== p2.durationDays || p1.price !== p2.price || p1.isNew || p1.isChanged) return true;
+    // Refs for auto-save payload — always up-to-date without stale closures
+    const welcomeRef = useRef(welcomeText);
+    const plansRef = useRef(plans);
+    const channelRef = useRef(selectedChannelId);
+    useEffect(() => { welcomeRef.current = welcomeText; }, [welcomeText]);
+    useEffect(() => { plansRef.current = plans; }, [plans]);
+    useEffect(() => { channelRef.current = selectedChannelId; }, [selectedChannelId]);
+
+    // Debounce timer ref
+    const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ── Save status display ──
+    const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const showSaved = () => {
+        setSaveStatus('saved');
+        if (statusTimer.current) clearTimeout(statusTimer.current);
+        statusTimer.current = setTimeout(() => setSaveStatus('idle'), 2200);
+    };
+
+    // ── Core save function ───────────────────────────────────────────────────
+    const performSave = useCallback(async () => {
+        if (!WebApp.initData) return;
+        setSaveStatus('saving');
+
+        try {
+            // 1. Welcome text
+            await fetch(`${API_URL}/me/config`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
+                body: JSON.stringify({ welcomeText: welcomeRef.current }),
+            });
+
+            // 2. Selected channel
+            const cid = channelRef.current;
+            if (cid) {
+                await fetch(`${API_URL}/me/bots/${botId}/channel`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
+                    body: JSON.stringify({ channelId: cid }),
+                });
+            }
+
+            // 3. Plans
+            const currentPlans = plansRef.current;
+            const updatedPlans: Plan[] = [...currentPlans];
+            for (let i = 0; i < currentPlans.length; i++) {
+                const plan = currentPlans[i];
+                if (plan.isNew) {
+                    const res = await fetch(`${API_URL}/me/bots/${botId}/plans`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
+                        body: JSON.stringify({ durationDays: plan.durationDays, price: plan.price, currency: plan.currency || 'USD' }),
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        updatedPlans[i] = { ...data.plan, price: Number(data.plan.price), isNew: false, isChanged: false };
+                    }
+                } else if (plan.id && plan.isChanged) {
+                    await fetch(`${API_URL}/me/plans/${plan.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
+                        body: JSON.stringify({ durationDays: plan.durationDays, price: plan.price, currency: plan.currency || 'USD' }),
+                    });
+                    updatedPlans[i] = { ...updatedPlans[i], isChanged: false };
+                }
+            }
+            setPlans(updatedPlans);
+            showSaved();
+        } catch (e) {
+            console.error('[SettingsView] auto-save error:', e);
+            setSaveStatus('idle');
         }
-        return false;
-    }, [plans, initialPlans]);
+    }, [API_URL, botId]);
 
-    const hasUnsavedChanges = welcomeText !== initialWelcomeText || hasUnsavedPlans || selectedChannelId !== initialChannelId;
+    // ── Debounced trigger ────────────────────────────────────────────────────
+    const triggerAutoSave = useCallback((delayMs = 800) => {
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(performSave, delayMs);
+    }, [performSave]);
 
-    useEffect(() => {
-        if (typeof document === 'undefined') return;
-        document.body.dataset.unsaved = hasUnsavedChanges ? 'true' : 'false';
-    }, [hasUnsavedChanges]);
+    // Immediate save (for channel select, plan delete)
+    const triggerImmediateSave = useCallback(() => {
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        performSave();
+    }, [performSave]);
 
-    useEffect(() => {
-        return () => {
-            if (typeof document === 'undefined') return;
-            document.body.dataset.unsaved = 'false';
-            document.body.dataset.saving = 'false';
-            document.body.dataset.savesuccess = 'false';
-            delete (window as any).__handleSave;
-        };
-    }, []);
-
+    // ── Load data ────────────────────────────────────────────────────────────
     const loadData = useCallback(async () => {
         if (typeof window === 'undefined' || !WebApp.initData) return;
         try {
@@ -265,7 +321,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         id: p.id, durationDays: p.durationDays, price: Number(p.price), currency: 'USD'
                     })).sort((a: Plan, b: Plan) => a.durationDays - b.durationDays);
                     setPlans(rawPlans);
-                    setInitialPlans(JSON.parse(JSON.stringify(rawPlans)));
 
                     const rawChannels = (bot.channels || []).map((c: any) => ({
                         id: c.id, telegramChatId: c.telegramChatId?.toString() ?? '', title: c.title || null,
@@ -273,83 +328,27 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                     setChannels(rawChannels);
                     const storedChannelId = (bot.settings as any)?.selectedChannelId ?? (rawChannels[0]?.id ?? null);
                     setSelectedChannelId(storedChannelId);
-                    setInitialChannelId(storedChannelId);
 
                     const bs = bot.settings as any;
                     const wText = bs?.welcomeText || bs?.welcomeTextEn || bs?.welcomeTextRu || (isRu ? 'Добро пожаловать!' : 'Welcome!');
                     setWelcomeText(wText);
-                    setInitialWelcomeText(wText);
                 }
             }
         } catch (e) { console.error('Failed to load bot data', e); }
     }, [API_URL, botId, isRu]);
 
     useEffect(() => { loadData(); }, [loadData]);
-
-    const handleSaveAll = useCallback(async () => {
-        if (!WebApp.initData) return;
-        setIsLoading(true);
-        document.body.dataset.saving = 'true';
-
-        try {
-            if (welcomeText !== initialWelcomeText) {
-                const res = await fetch(`${API_URL}/me/config`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
-                    body: JSON.stringify({ welcomeText })
-                });
-                if (res.ok) setInitialWelcomeText(welcomeText);
-                else throw new Error(`Save failed: ${res.status}`);
-            }
-
-            if (selectedChannelId && selectedChannelId !== initialChannelId) {
-                const res = await fetch(`${API_URL}/me/bots/${botId}/channel`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
-                    body: JSON.stringify({ channelId: selectedChannelId })
-                });
-                if (res.ok) setInitialChannelId(selectedChannelId);
-            }
-
-            let newPlansState = [...plans];
-            for (let i = 0; i < plans.length; i++) {
-                const plan = plans[i];
-                if (plan.isNew) {
-                    const res = await fetch(`${API_URL}/me/bots/${botId}/plans`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
-                        body: JSON.stringify({ durationDays: plan.durationDays, price: plan.price, currency: plan.currency || 'USD' })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        newPlansState[i] = { ...data.plan, price: Number(data.plan.price), isNew: false, isChanged: false };
-                    }
-                } else if (plan.id && plan.isChanged) {
-                    const res = await fetch(`${API_URL}/me/plans/${plan.id}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
-                        body: JSON.stringify({ durationDays: plan.durationDays, price: plan.price, currency: plan.currency || 'USD' })
-                    });
-                    if (res.ok) newPlansState[i].isChanged = false;
-                }
-            }
-            setPlans(newPlansState);
-            setInitialPlans(JSON.parse(JSON.stringify(newPlansState)));
-
-            document.body.dataset.saving = 'false';
-            document.body.dataset.savesuccess = 'true';
-            setTimeout(() => { document.body.dataset.savesuccess = 'false'; }, 1700);
-            setTimeout(() => router.refresh(), 500);
-        } catch (e) {
-            console.error('[SettingsView] handleSaveAll error:', e);
-            document.body.dataset.saving = 'false';
-            document.body.dataset.savesuccess = 'false';
-        } finally { setIsLoading(false); }
-    }, [API_URL, botId, welcomeText, initialWelcomeText, plans, selectedChannelId, initialChannelId, router]);
-
-    useEffect(() => { (window as any).__handleSave = handleSaveAll; }, [handleSaveAll]);
     useEffect(() => { if (typeof window !== 'undefined') WebApp.MainButton.hide(); }, []);
 
+    // Cleanup timers on unmount
+    useEffect(() => {
+        return () => {
+            if (saveTimer.current) clearTimeout(saveTimer.current);
+            if (statusTimer.current) clearTimeout(statusTimer.current);
+        };
+    }, []);
+
+    // ── Delete plan ──────────────────────────────────────────────────────────
     const handleDeletePlan = async (index: number) => {
         const plan = plans[index];
         if (plan.id && !plan.isNew) {
@@ -359,7 +358,10 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         const res = await fetch(`${API_URL}/me/plans/${plan.id}`, {
                             method: 'DELETE', headers: { 'Authorization': `Bearer ${WebApp.initData}` }
                         });
-                        if (res.ok) { setPlans(plans.filter((_, i) => i !== index)); router.refresh(); }
+                        if (res.ok) {
+                            setPlans(p => p.filter((_, i) => i !== index));
+                            router.refresh();
+                        }
                     } catch { }
                 }
             });
@@ -408,21 +410,41 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', paddingBottom: 100 }}>
 
             {/* Header */}
-            <header style={{ display: 'flex', alignItems: 'center', gap: 12 }}
+            <header style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between' }}
                 className="section-enter">
-                <button onClick={onBack} style={{
-                    width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'color-mix(in srgb, var(--tg-hint) 9%, transparent)',
-                    color: 'var(--tg-accent)', transition: 'transform 0.1s',
-                }}
-                    onPointerDown={e => e.currentTarget.style.transform = 'scale(0.9)'}
-                    onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
-                    onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-                    <ArrowLeft size={20} />
-                </button>
-                <h1 style={{ fontSize: 21, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>
-                    {t.botSettings}
-                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button onClick={onBack} style={{
+                        width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'color-mix(in srgb, var(--tg-hint) 9%, transparent)',
+                        color: 'var(--tg-accent)', transition: 'transform 0.1s',
+                    }}
+                        onPointerDown={e => e.currentTarget.style.transform = 'scale(0.9)'}
+                        onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                        onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+                        <ArrowLeft size={20} />
+                    </button>
+                    <h1 style={{ fontSize: 21, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>
+                        {t.botSettings}
+                    </h1>
+                </div>
+
+                {/* Auto-save status indicator */}
+                <div
+                    className={`save-status-pill ${saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : 'hidden'}`}
+                    style={{ flexShrink: 0 }}
+                >
+                    {saveStatus === 'saving' ? (
+                        <>
+                            <Loader2 size={12} className="spin-icon" />
+                            {isRu ? 'Сохраняем…' : 'Saving…'}
+                        </>
+                    ) : saveStatus === 'saved' ? (
+                        <>
+                            <CheckCircle2 size={12} />
+                            {isRu ? 'Сохранено' : 'Saved'}
+                        </>
+                    ) : null}
+                </div>
             </header>
 
             {/* Welcome Message */}
@@ -438,11 +460,19 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         className="tg-input"
                         style={{ minHeight: 88, lineHeight: 1.5, fontSize: 14, resize: 'none' }}
                         value={welcomeText}
-                        onChange={e => setWelcomeText(e.target.value)}
+                        onChange={e => {
+                            setWelcomeText(e.target.value);
+                            triggerAutoSave(900);
+                        }}
                         onFocus={e => e.target.style.borderColor = 'var(--tg-accent)'}
                         onBlur={e => {
                             e.target.style.borderColor = 'color-mix(in srgb, var(--tg-hint) 12%, transparent)';
                             window.scrollTo(0, 0);
+                            // Flush save on blur
+                            if (saveTimer.current) {
+                                clearTimeout(saveTimer.current);
+                                performSave();
+                            }
                         }}
                     />
                     <p style={{ fontSize: 11, color: 'var(--tg-hint)', marginTop: 8, paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 4, opacity: 0.75 }}>
@@ -477,7 +507,11 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         channels.map((ch) => {
                             const isSel = selectedChannelId === ch.id;
                             return (
-                                <button key={ch.id} type="button" onClick={() => setSelectedChannelId(ch.id)}
+                                <button key={ch.id} type="button" onClick={() => {
+                                    setSelectedChannelId(ch.id);
+                                    // Immediate save on channel select
+                                    setTimeout(() => triggerImmediateSave(), 0);
+                                }}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 12,
                                         padding: '13px 14px', borderRadius: 16, textAlign: 'left',
@@ -541,7 +575,6 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                             animationDelay: `${i * 0.06}s`,
                             position: 'relative',
                         }}>
-                            {/* Color accent dot */}
                             <div style={{
                                 position: 'absolute', left: 0, top: 16, bottom: 16,
                                 width: 3, borderRadius: '0 3px 3px 0',
@@ -553,12 +586,14 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                                         const p = [...plans];
                                         p[i] = { ...p[i], durationDays: days, isChanged: true };
                                         setPlans(p);
+                                        triggerAutoSave();
                                     }} />
                                 <PricePicker value={plan.price} isRu={isRu}
                                     onChange={price => {
                                         const p = [...plans];
                                         p[i] = { ...p[i], price, isChanged: true };
                                         setPlans(p);
+                                        triggerAutoSave();
                                     }} />
                                 <button onClick={() => handleDeletePlan(i)} style={{
                                     width: 38, height: 38, borderRadius: 12, flexShrink: 0,
@@ -576,7 +611,11 @@ export function SettingsView({ API_URL, botId, onBack, onDeleted, t }: { API_URL
                         </div>
                     ))}
 
-                    <button onClick={() => setPlans([...plans, { durationDays: 30, price: 10, currency: 'USD', isNew: true }])}
+                    <button onClick={() => {
+                        const newPlan: Plan = { durationDays: 30, price: 10, currency: 'USD', isNew: true };
+                        setPlans(p => [...p, newPlan]);
+                        triggerAutoSave(600);
+                    }}
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                             padding: '13px', borderRadius: 16,

@@ -210,76 +210,74 @@ textarea {
   contain: layout style;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━ Bottom Bar — unified iOS pill ━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━ Bottom Bar — iOS Pill Nav ━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 /* Outer wrapper — centers the pill horizontally */
 .bottom-bar-wrap {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   left: 0;
   right: 0;
   display: flex;
   justify-content: center;
   pointer-events: none;
   z-index: 100;
-  padding-inline: 20px;
+  padding-inline: 24px;
 }
 
 /* The pill itself */
 .bottom-bar-pill {
-  display: flex;
-  align-items: center;
-  border-radius: var(--radius-pill);
-  background: var(--glass-bg);
-  backdrop-filter: blur(44px) saturate(180%);
-  -webkit-backdrop-filter: blur(44px) saturate(180%);
-  box-shadow:
-    0 0 0 0.5px color-mix(in srgb, var(--tg-hint) 16%, transparent),
-    0 10px 40px rgba(0, 0, 0, 0.16),
-    0 2px 8px rgba(0, 0, 0, 0.08);
-  pointer-events: auto;
-  overflow: hidden;
-  /* Base: nav-only width */
-  padding: 8px;
-  gap: 0;
-  /* Smooth expand when save appears */
-  transition: padding 0.32s cubic-bezier(0.34, 1.32, 0.64, 1);
-}
-
-/* Nav section — contains the 3 tab buttons */
-.bottom-bar-nav {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--tg-secondary-bg) 94%, transparent);
+  backdrop-filter: blur(48px) saturate(200%);
+  -webkit-backdrop-filter: blur(48px) saturate(200%);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--tg-hint) 14%, transparent),
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    0 2px 10px rgba(0, 0, 0, 0.10),
+    0 24px 56px rgba(0, 0, 0, 0.09);
+  pointer-events: auto;
+  padding: 6px 6px;
+  gap: 0;
 }
 
-/* Active squircle indicator behind icon */
-.tab-pill {
+/* Sliding active pill background indicator */
+.tab-active-pill {
   position: absolute;
-  border-radius: calc(var(--radius-pill) - 4px);
-  background: color-mix(in srgb, var(--tg-accent) 13%, transparent);
-  transition:
-    left 0.34s cubic-bezier(0.34, 1.32, 0.64, 1),
-    width 0.34s cubic-bezier(0.34, 1.32, 0.64, 1);
-  will-change: left;
+  top: 6px;
+  height: calc(100% - 12px);
+  left: 0;
+  width: 0;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--tg-accent) 14%, transparent);
   pointer-events: none;
+  transition:
+    transform 0.36s cubic-bezier(0.34, 1.28, 0.64, 1),
+    width 0.36s cubic-bezier(0.34, 1.28, 0.64, 1);
+  will-change: transform, width;
+  z-index: 0;
 }
 
+/* Individual tab button */
 .tab-item {
-  width: 54px;
-  height: 44px;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  position: relative;
-  z-index: 1;
+  gap: 3px;
+  padding: 9px 18px 8px;
+  border-radius: var(--radius-pill);
   color: var(--tg-hint);
-  transition: color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-spring);
-  border-radius: calc(var(--radius-pill) - 4px);
+  transition:
+    color var(--dur-fast) ease,
+    transform var(--dur-instant) var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
 }
 
 .tab-item.active {
@@ -287,143 +285,45 @@ textarea {
 }
 
 .tab-item:active {
-  transform: scale(0.82);
-  opacity: 0.7;
+  transform: scale(0.88);
 }
 
-/* Active dot indicator below icon */
-.tab-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--tg-accent);
-  margin-top: 3px;
-  transition: transform 0.28s var(--ease-bounce), opacity 0.2s ease;
+/* Tab icon — bounces in when activated */
+.tab-icon {
+  display: block;
+  transition: transform 0.18s var(--ease-spring);
 }
 
-.tab-item:not(.active) .tab-dot {
-  transform: scale(0);
-  opacity: 0;
-}
-
-.tab-item.active .tab-dot {
-  transform: scale(1);
-  opacity: 1;
-}
-
-/* Tab icon bounce on active */
 .tab-item.active .tab-icon {
-  animation: tabIconBounce 0.38s var(--ease-bounce) both;
+  animation: tabIconBounce 0.4s var(--ease-bounce) both;
 }
 
 @keyframes tabIconBounce {
   0% {
-    transform: scale(0.72);
+    transform: scale(0.68) translateY(2px);
   }
 
-  60% {
-    transform: scale(1.14);
+  55% {
+    transform: scale(1.18) translateY(-1px);
   }
 
   100% {
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
 }
 
-/* ── Save section — slides in from right ── */
-
-.bottom-bar-save {
-  display: flex;
-  align-items: center;
-  /* collapsed: zero width, clipped */
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition:
-    max-width 0.32s cubic-bezier(0.34, 1.32, 0.64, 1),
-    opacity 0.22s ease;
+/* Tab label text */
+.tab-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  transition: opacity var(--dur-fast) ease;
+  white-space: nowrap;
 }
 
-.bottom-bar-save.visible {
-  max-width: 76px;
-  opacity: 1;
-}
-
-/* Thin hairline separator between nav and save */
-.bottom-bar-divider {
-  width: 0.5px;
-  height: 28px;
-  background: color-mix(in srgb, var(--tg-hint) 22%, transparent);
-  margin-inline: 6px;
-  flex-shrink: 0;
-}
-
-/* Save button */
-.save-chip {
-  width: 54px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: calc(var(--radius-pill) - 4px);
-  position: relative;
-  flex-shrink: 0;
-  transition: transform 0.12s var(--ease-spring), opacity 0.12s ease;
-}
-
-.save-chip:active {
-  transform: scale(0.82);
-  opacity: 0.7;
-}
-
-.save-chip:disabled {
-  pointer-events: none;
-}
-
-/* SVG icon layers */
-.save-svg {
-  width: 21px;
-  height: 21px;
-  position: absolute;
-  transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-  opacity: 1;
-  transform: scale(1);
-}
-
-.save-svg.out {
-  opacity: 0;
-  transform: scale(0.5);
-}
-
-.save-svg.in {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* Default hidden state for secondary icons */
-.save-svg:not(.out):not(.in) {
-  opacity: 0;
-  transform: scale(0.5);
-}
-
-/* First child (disk icon) visible by default */
-.save-chip>.save-svg:first-child {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.save-chip>.save-svg:first-child.out {
-  opacity: 0;
-  transform: scale(0.5);
-}
-
-/* Spinner rotation */
-.save-svg-spin {
-  animation: none;
-}
-
-.save-svg-spin.in {
-  animation: saveSpin 0.7s linear infinite;
+.tab-item:not(.active) .tab-label {
+  opacity: 0.55;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━ Launch Screen ━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -559,11 +459,46 @@ textarea {
   }
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━ Save chip animations ━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━ Auto-save status indicator ━━━━━━━━━━━━━━━━━━━━━━━━ */
 @keyframes saveSpin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Floating save-status pill shown inside SettingsView */
+.save-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s var(--ease-spring);
+}
+
+.save-status-pill.saving {
+  background: color-mix(in srgb, var(--tg-accent) 10%, transparent);
+  color: var(--tg-accent);
+  border: 0.5px solid color-mix(in srgb, var(--tg-accent) 22%, transparent);
+}
+
+.save-status-pill.saved {
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
+  border: 0.5px solid color-mix(in srgb, var(--green) 22%, transparent);
+}
+
+.save-status-pill.hidden {
+  opacity: 0;
+  transform: scale(0.88);
+}
+
+.save-status-pill .spin-icon {
+  animation: saveSpin 0.7s linear infinite;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━ iOS List Rows ━━━━━━━━━━━━━━━━━━━━━━━━ */

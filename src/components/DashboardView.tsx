@@ -102,7 +102,7 @@ function CreatorAvatar({ photoUrl, initials, size = 44 }: { photoUrl: string | n
 // ─── DashboardView ────────────────────────────────────────────────────────────
 
 export function DashboardView({ API_URL, t, userName }: { API_URL: string; t: TranslationDict; userName: string }) {
-    const [stats, setStats] = useState({ lifetimeRevenue: 0, activeSubs: 0, monthlyMrr: 0, commissionRate: 15, botId: null as string | null });
+    const [stats, setStats] = useState({ lifetimeRevenue: 0, activeSubs: 0, activeSubsDelta: 0, monthlyMrr: 0, mrrDelta: 0, commissionRate: 15, botId: null as string | null });
     const [chartData, setChartData] = useState<any[]>([]);
     const [broadcastText, setBroadcastText] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -320,6 +320,15 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string; t: Tr
                             <Users size={14} strokeWidth={2.4} />
                         </div>
                         <span style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{t.activeSubs}</span>
+                        {stats.activeSubsDelta !== 0 && (
+                            <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, marginLeft: 'auto',
+                                background: stats.activeSubsDelta > 0 ? 'rgba(52,199,89,0.15)' : 'rgba(255,59,48,0.15)',
+                                color: stats.activeSubsDelta > 0 ? 'var(--green)' : 'var(--red)'
+                            }}>
+                                {stats.activeSubsDelta > 0 ? '+' : ''}{stats.activeSubsDelta}%
+                            </span>
+                        )}
                     </div>
                     <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em' }}>
                         {animated ? <AnimatedNum value={stats.activeSubs} prefix="" /> : '0'}
@@ -346,6 +355,15 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string; t: Tr
                             <Activity size={14} strokeWidth={2.4} />
                         </div>
                         <span style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{t.monthlyMrr}</span>
+                        {stats.mrrDelta !== 0 && (
+                            <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, marginLeft: 'auto',
+                                background: stats.mrrDelta > 0 ? 'rgba(52,199,89,0.15)' : 'rgba(255,59,48,0.15)',
+                                color: stats.mrrDelta > 0 ? 'var(--green)' : 'var(--red)'
+                            }}>
+                                {stats.mrrDelta > 0 ? '+' : ''}{stats.mrrDelta}%
+                            </span>
+                        )}
                     </div>
                     <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em' }}>
                         {animated ? <AnimatedNum value={stats.monthlyMrr} /> : '$0'}

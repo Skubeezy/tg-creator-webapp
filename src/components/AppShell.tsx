@@ -8,28 +8,37 @@ import { BotsView } from '@/components/BotsView';
 import { PayoutsView } from '@/components/PayoutsView';
 import { getTranslation } from '@/lib/translations';
 
-// ─── Save FAB ───────────────────────────────────────────────────────────────
+// ─── Performance Detection ────────────────────────────────────────────────────
+
+function detectLowEnd(): boolean {
+    if (typeof navigator === 'undefined') return false;
+    const mem = (navigator as any).deviceMemory;
+    const conn = (navigator as any).connection;
+    if (mem && mem < 4) return true;
+    if (conn?.saveData) return true;
+    if (conn?.effectiveType === 'slow-2g' || conn?.effectiveType === '2g') return true;
+    return false;
+}
+
+// ─── Save FAB ─────────────────────────────────────────────────────────────────
 
 type FABState = 'idle' | 'saving' | 'success';
 
 function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolean; onClick: () => void }) {
     const isSaving = state === 'saving';
     const isSuccess = state === 'success';
-
-    // Track if we should show the checkmark and keep it latched until the button fades out completely
     const [showCheck, setShowCheck] = useState(false);
 
     useEffect(() => {
         if (isSuccess) setShowCheck(true);
         if (!visible) {
-            const timer = setTimeout(() => setShowCheck(false), 400); // 400ms is longer than the hide animation
-            return () => clearTimeout(timer);
+            const t = setTimeout(() => setShowCheck(false), 400);
+            return () => clearTimeout(t);
         }
     }, [isSuccess, visible]);
 
-    // Initial color neutral, lights up when clicked/saving/success
-    const iconColor = (isSaving || showCheck) ? 'var(--tg-accent, #3390ec)' : 'var(--tg-text, currentColor)';
-    const iconOpacity = (isSaving || showCheck) ? 1 : 0.65;
+    const iconColor = (isSaving || showCheck) ? 'var(--tg-accent, #007aff)' : 'var(--tg-text, currentColor)';
+    const iconOpacity = (isSaving || showCheck) ? 1 : 0.62;
 
     return (
         <button
@@ -38,8 +47,8 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
             disabled={isSaving}
             aria-label="Save settings"
             style={{
-                width: 52,
-                height: 52,
+                width: 54,
+                height: 54,
                 borderRadius: '50%',
                 padding: 0,
                 flexShrink: 0,
@@ -51,87 +60,66 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
                 position: 'relative',
                 overflow: 'hidden',
                 pointerEvents: visible ? 'auto' : 'none',
-                // Drop inline glassmorphism to fully inherit the exact tab-bar-inner styles,
-                // but keep our custom appear/disappear transform logic!
                 opacity: visible ? 1 : 0,
-                transform: visible ? 'scale(1) translateX(0)' : 'scale(0.6) translateX(20px)',
-                transition: 'opacity 0.25s cubic-bezier(0.22,0.61,0.36,1), transform 0.25s cubic-bezier(0.22,0.61,0.36,1)',
+                transform: visible ? 'scale(1) translateX(0)' : 'scale(0.55) translateX(22px)',
+                transition: 'opacity 0.28s cubic-bezier(0.22,0.61,0.36,1), transform 0.28s cubic-bezier(0.22,0.61,0.36,1)',
             }}
         >
-            {/* Sheen overlay for a bit of 3D depth */}
+            {/* Inner sheen */}
             <div style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%)',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 55%)',
                 pointerEvents: 'none',
             }} />
 
             {/* Save icon */}
-            <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={iconColor}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <svg viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round"
                 style={{
-                    width: 22,
-                    height: 22,
-                    position: 'absolute',
+                    width: 22, height: 22, position: 'absolute',
                     opacity: showCheck ? 0 : iconOpacity,
                     transform: isSaving ? 'scale(0.85)' : 'scale(1)',
                     animation: isSaving ? 'saveSpin 0.55s linear infinite' : 'none',
                     transition: 'opacity 0.2s ease, transform 0.15s ease, stroke 0.25s ease',
                 }}
             >
-                {/* Floppy disk outline */}
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                {/* Bottom storage window */}
                 <polyline points="17 21 17 13 7 13 7 21" />
-                {/* Top label slot */}
                 <polyline points="7 3 7 8 15 8" />
             </svg>
 
-            {/* Checkmark icon */}
-            <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={iconColor}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {/* Checkmark */}
+            <svg viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round"
                 style={{
-                    width: 22,
-                    height: 22,
-                    position: 'absolute',
+                    width: 22, height: 22, position: 'absolute',
                     opacity: showCheck ? 1 : 0,
-                    transform: showCheck ? 'scale(1)' : 'scale(0.5)',
-                    transition: 'opacity 0.2s ease 0.05s, transform 0.25s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
+                    transform: showCheck ? 'scale(1)' : 'scale(0.4)',
+                    transition: 'opacity 0.2s ease 0.05s, transform 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
                 }}
             >
-                <polyline
-                    points="4 13 9 18 20 7"
-                    style={{
-                        strokeDasharray: 25,
-                        strokeDashoffset: showCheck ? 0 : 25,
-                        transition: 'stroke-dashoffset 0.25s ease 0.08s',
-                    }}
-                />
+                <polyline points="4 13 9 18 20 7" style={{
+                    strokeDasharray: 25,
+                    strokeDashoffset: showCheck ? 0 : 25,
+                    transition: 'stroke-dashoffset 0.26s ease 0.09s',
+                }} />
             </svg>
         </button>
     );
 }
 
-// ─── AppShell ────────────────────────────────────────────────────────────────
+// ─── AppShell ─────────────────────────────────────────────────────────────────
 
 export default function AppShell() {
     const [isMounted, setIsMounted] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [prevIndex, setPrevIndex] = useState(0);
     const [langCode, setLangCode] = useState<string>('en');
     const [userName, setUserName] = useState<string>('');
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
     const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
-    // ── Save FAB state (driven by SettingsView via body dataset) ──
+    // Save FAB
     const [fabUnsaved, setFabUnsaved] = useState(false);
     const [fabSaving, setFabSaving] = useState(false);
     const [fabSuccess, setFabSuccess] = useState(false);
@@ -139,25 +127,21 @@ export default function AppShell() {
     const fabState: FABState = fabSaving ? 'saving' : fabSuccess ? 'success' : 'idle';
     const fabVisible = fabUnsaved || fabSaving || fabSuccess;
 
-    // Watch body dataset for dirty / saving / success flags set by SettingsView
+    // Watch body dataset for FAB signals from SettingsView
     useEffect(() => {
         if (typeof window === 'undefined') return;
-
         const sync = () => {
             setFabUnsaved(document.body.dataset.unsaved === 'true');
             setFabSaving(document.body.dataset.saving === 'true');
             setFabSuccess(document.body.dataset.savesuccess === 'true');
         };
-
-        sync(); // initial
-
+        sync();
         const observer = new MutationObserver(sync);
         observer.observe(document.body, { attributes: true, attributeFilter: ['data-unsaved', 'data-saving', 'data-savesuccess'] });
         return () => observer.disconnect();
     }, []);
 
     const handleFabClick = useCallback(() => {
-        // SettingsView attaches its save handler to window.__handleSave
         if (typeof window !== 'undefined' && (window as any).__handleSave) {
             (window as any).__handleSave();
         }
@@ -172,13 +156,16 @@ export default function AppShell() {
 
             try {
                 WebApp.expand();
-                if (WebApp.disableVerticalSwipes) {
-                    WebApp.disableVerticalSwipes();
-                }
+                if (WebApp.disableVerticalSwipes) WebApp.disableVerticalSwipes();
             } catch (_) { }
+
+            // Performance detection — add .perf-low to html element
+            if (detectLowEnd()) {
+                document.documentElement.classList.add('perf-low');
+            }
         }
         try { WebApp.ready(); } catch (_) { }
-        const t = setTimeout(() => setIsMounted(true), 800);
+        const t = setTimeout(() => setIsMounted(true), 920);
         return () => clearTimeout(t);
     }, []);
 
@@ -189,18 +176,12 @@ export default function AppShell() {
 
     const handleTouchEnd = (e: React.TouchEvent) => {
         if (touchStartX === null || touchStartY === null) return;
-        const touchEndX = e.changedTouches[0].clientX;
-        const touchEndY = e.changedTouches[0].clientY;
+        const dx = touchStartX - e.changedTouches[0].clientX;
+        const dy = touchStartY - e.changedTouches[0].clientY;
 
-        const deltaX = touchStartX - touchEndX;
-        const deltaY = touchStartY - touchEndY;
-
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 40) {
-            if (deltaX > 0 && activeIndex < 2) {
-                setActiveIndex(activeIndex + 1);
-            } else if (deltaX < 0 && activeIndex > 0) {
-                setActiveIndex(activeIndex - 1);
-            }
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 42) {
+            if (dx > 0 && activeIndex < 2) { setPrevIndex(activeIndex); setActiveIndex(activeIndex + 1); }
+            else if (dx < 0 && activeIndex > 0) { setPrevIndex(activeIndex); setActiveIndex(activeIndex - 1); }
         }
 
         setTouchStartX(null);
@@ -208,24 +189,30 @@ export default function AppShell() {
     };
 
     const t = useMemo(() => getTranslation(langCode), [langCode]);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://tg-creator-saas.vercel.app/api/bots";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://tg-creator-saas.vercel.app/api/bots';
     const tabLabels = useMemo(() => [t.dashboard, t.myBots, t.payouts], [t]);
 
     const handleTabChange = useCallback((idx: number) => {
+        setPrevIndex(activeIndex);
         setActiveIndex(idx);
-    }, []);
+    }, [activeIndex]);
 
+    // ─── Launch Screen ───────────────────────────────
     if (!isMounted) {
         return (
             <div className="launch-screen">
                 <div className="launch-logo">
-                    <Bot size={36} color="white" strokeWidth={2} />
+                    <Bot size={38} color="white" strokeWidth={1.8} />
                 </div>
-                <div className="launch-text">FanGate</div>
-                <div className="launch-spinner" />
+                <div className="launch-title">FanGate</div>
+                <div className="launch-progress">
+                    <div className="launch-progress-bar" />
+                </div>
             </div>
         );
     }
+
+    const icons = [LayoutDashboard, Bot, Wallet];
 
     return (
         <main className="app-shell">
@@ -235,7 +222,7 @@ export default function AppShell() {
                 onTouchEnd={handleTouchEnd}
                 style={{
                     transform: `translateX(-${activeIndex * 100}vw)`,
-                    width: '300vw'
+                    width: '300vw',
                 }}
             >
                 <div className="carousel-slide">
@@ -252,49 +239,54 @@ export default function AppShell() {
             {/* ── Unified Bottom Bar ── */}
             <div style={{
                 position: 'fixed',
-                bottom: 24,
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
                 left: 16,
                 right: 16,
                 display: 'flex',
                 alignItems: 'center',
+                gap: fabVisible ? 8 : 0,
                 zIndex: 100,
                 pointerEvents: 'none',
             }}>
-                {/* Nav pill — flex:1 naturally fills available space */}
+                {/* Nav pill */}
                 <div style={{
                     flex: 1,
                     minWidth: 0,
-                    transition: 'flex 0.5s ease-in-out',
                     pointerEvents: 'auto',
+                    transition: isMounted ? 'flex 0.48s ease-in-out' : 'none',
                 }}>
                     <div className="tab-bar-inner">
                         <div className="tab-pill" style={{
                             transform: `translateX(${activeIndex * 100}%)`,
                         }} />
-                        {[LayoutDashboard, Bot, Wallet].map((Icon, idx) => (
-                            <button
-                                key={idx}
-                                className={`tab-item ${activeIndex === idx ? 'active' : ''}`}
-                                onClick={() => handleTabChange(idx)}
-                            >
-                                <Icon size={24} strokeWidth={activeIndex === idx ? 2.4 : 1.6} />
-                                <span>{tabLabels[idx]}</span>
-                            </button>
-                        ))}
+                        {icons.map((Icon, idx) => {
+                            const isActive = activeIndex === idx;
+                            return (
+                                <button
+                                    key={idx}
+                                    className={`tab-item ${isActive ? 'active' : ''}`}
+                                    onClick={() => handleTabChange(idx)}
+                                >
+                                    <span className={isActive ? 'tab-icon' : ''}>
+                                        <Icon size={24} strokeWidth={isActive ? 2.4 : 1.65} />
+                                    </span>
+                                    <span>{tabLabels[idx]}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Save FAB — collapsible wrapper: width controls layout space, button handles its own visibility */}
+                {/* Save FAB wrapper */}
                 <div style={{
-                    width: fabVisible ? 60 : 0,
-                    marginLeft: fabVisible ? 8 : 0,
+                    width: fabVisible ? 62 : 0,
                     flexShrink: 0,
                     overflow: 'visible',
-                    // Only enable transition after mount to avoid initial paint glitch
-                    transition: isMounted ? 'width 0.5s ease-in-out, margin-left 0.5s ease-in-out' : 'none',
+                    transition: isMounted ? 'width 0.48s ease-in-out' : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end',
+                    pointerEvents: 'auto',
                 }}>
                     <SaveFAB state={fabState} visible={fabVisible} onClick={handleFabClick} />
                 </div>

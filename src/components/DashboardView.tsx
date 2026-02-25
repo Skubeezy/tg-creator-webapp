@@ -1,11 +1,13 @@
 'use client';
 
 import { Activity, Users, Bot, TrendingUp, Sparkles, MessageCircle, UserPlus, Settings, ArrowRight, Zap, X, Send } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import WebApp from '@twa-dev/sdk';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { TranslationDict } from '@/lib/translations';
 import { LegalModal } from '@/components/LegalModal';
+
+// ─── Commission Tiers ─────────────────────────────────────────────────────────
 
 const TIERS = [
     { rate: 15, min: 0, max: 500 },
@@ -28,14 +30,76 @@ function getWaterLevel(revenue: number): number {
     return Math.max(5, Math.min(100, progress * 100));
 }
 
-export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: TranslationDict, userName: string }) {
-    const [stats, setStats] = useState({
-        lifetimeRevenue: 0,
-        activeSubs: 0,
-        monthlyMrr: 0,
-        commissionRate: 15,
-        botId: null as string | null
-    });
+// ─── Animated Number Counter ──────────────────────────────────────────────────
+
+function AnimatedNum({ value, prefix = '$', suffix = '' }: { value: number; prefix?: string; suffix?: string }) {
+    const [displayed, setDisplayed] = useState(0);
+    const rafRef = useRef<number>(0);
+    const startRef = useRef<number | null>(null);
+    const duration = 1000;
+
+    useEffect(() => {
+        startRef.current = null;
+        cancelAnimationFrame(rafRef.current);
+        const from = 0;
+        const to = value;
+        const step = (ts: number) => {
+            if (!startRef.current) startRef.current = ts;
+            const p = Math.min((ts - startRef.current) / duration, 1);
+            const eased = 1 - Math.pow(1 - p, 3);
+            setDisplayed(Math.round((from + (to - from) * eased) * 100) / 100);
+            if (p < 1) rafRef.current = requestAnimationFrame(step);
+        };
+        rafRef.current = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(rafRef.current);
+    }, [value]);
+
+    return <span>{prefix}{displayed.toLocaleString()}{suffix}</span>;
+}
+
+// ─── Avatar Ring ──────────────────────────────────────────────────────────────
+
+function CreatorAvatar({ photoUrl, initials, size = 44 }: { photoUrl: string | null; initials: string; size?: number }) {
+    const [failed, setFailed] = useState(false);
+    const r = Math.round(size * 0.28);
+
+    return (
+        <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+            {/* Glow ring */}
+            <div style={{
+                position: 'absolute',
+                inset: -2,
+                borderRadius: r + 3,
+                background: `linear-gradient(135deg, var(--tg-accent), color-mix(in srgb, var(--tg-accent) 60%, #34c759))`,
+                opacity: 0.22,
+                animation: 'glowRing 3s ease-in-out infinite',
+            }} />
+            <div style={{
+                width: size, height: size, borderRadius: r,
+                overflow: 'hidden', position: 'relative',
+                background: 'color-mix(in srgb, var(--tg-accent) 14%, transparent)',
+            }}>
+                {photoUrl && !failed ? (
+                    <img src={photoUrl} alt={initials}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={() => setFailed(true)} />
+                ) : (
+                    <div style={{
+                        width: '100%', height: '100%', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        fontSize: Math.round(size * 0.36), fontWeight: 700,
+                        color: 'var(--tg-accent)',
+                    }}>{initials}</div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── DashboardView ────────────────────────────────────────────────────────────
+
+export function DashboardView({ API_URL, t, userName }: { API_URL: string; t: TranslationDict; userName: string }) {
+    const [stats, setStats] = useState({ lifetimeRevenue: 0, activeSubs: 0, monthlyMrr: 0, commissionRate: 15, botId: null as string | null });
     const [chartData, setChartData] = useState<any[]>([]);
     const [broadcastText, setBroadcastText] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -45,9 +109,9 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
     const [animated, setAnimated] = useState(false);
     const [botsList, setBotsList] = useState<{ id: string; name: string; username: string }[]>([]);
     const [selectedBroadcastBotId, setSelectedBroadcastBotId] = useState<string | null>(null);
-    const isRu = t.isRu;
     const [creatorPhotoUrl, setCreatorPhotoUrl] = useState<string | null>(null);
     const [creatorInitials, setCreatorInitials] = useState<string>('?');
+    const isRu = t.isRu;
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -63,7 +127,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
             const seen = localStorage.getItem('fangate_welcome_seen');
             if (!seen) setShowWelcome(true);
         }
-        setTimeout(() => setAnimated(true), 100);
+        setTimeout(() => setAnimated(true), 120);
     }, []);
 
     useEffect(() => {
@@ -76,26 +140,19 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                     if (res.ok) {
                         const data = await res.json();
                         setStats(data);
-
                         if (data.botId) {
-                            const analyticsRes = await fetch(`${API_URL}/me/bots/${data.botId}/analytics`, {
+                            const ar = await fetch(`${API_URL}/me/bots/${data.botId}/analytics`, {
                                 headers: { 'Authorization': `Bearer ${WebApp.initData}` }
                             });
-                            if (analyticsRes.ok) {
-                                const aData = await analyticsRes.json();
-                                setChartData(aData.chartData);
-                            }
+                            if (ar.ok) { const ad = await ar.json(); setChartData(ad.chartData); }
                         }
                     }
                 }
-            } catch (e) {
-                console.error("Failed to fetch stats", e);
-            }
+            } catch (e) { console.error('Failed to fetch stats', e); }
         };
         fetchStats();
     }, [API_URL]);
 
-    // Fetch bots for broadcast selector
     useEffect(() => {
         const fetchBots = async () => {
             if (typeof window === 'undefined' || !WebApp.initData) return;
@@ -134,9 +191,7 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
             const res = await fetch(`${API_URL}/me/bots/${selectedBroadcastBotId}/broadcast`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
-                body: JSON.stringify({
-                    text: broadcastText
-                })
+                body: JSON.stringify({ text: broadcastText })
             });
             const data = await res.json();
             if (data.success) {
@@ -145,14 +200,10 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
             } else {
                 WebApp.showAlert(data.error || t.networkError);
             }
-        } catch {
-            WebApp.showAlert(t.networkError);
-        } finally {
-            setIsSending(false);
-        }
+        } catch { WebApp.showAlert(t.networkError); }
+        finally { setIsSending(false); }
     };
 
-    // Lock body scroll when Commission Modal is open
     useEffect(() => {
         if (showCommissionModal) {
             document.body.style.overflow = 'hidden';
@@ -163,29 +214,41 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
     // ─── Welcome ───
     if (showWelcome) {
         return (
-            <div className="flex flex-col gap-5 w-full">
-                <div className="flex flex-col items-center text-center gap-4 pt-6">
-                    <div className="w-16 h-16 rounded-[18px] flex items-center justify-center text-white"
-                        style={{ backgroundColor: 'var(--tg-accent)' }}>
-                        <Sparkles size={32} strokeWidth={1.8} />
+            <div className="flex flex-col gap-5 w-full section-enter">
+                <div className="flex flex-col items-center text-center gap-5 pt-6">
+                    <div style={{
+                        width: 72, height: 72, borderRadius: 22,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'var(--tg-accent)',
+                        boxShadow: '0 12px 40px color-mix(in srgb, var(--tg-accent) 45%, transparent)',
+                        animation: 'logoPulse 2.4s ease-in-out infinite',
+                    }}>
+                        <Sparkles size={32} color="white" strokeWidth={1.8} />
                     </div>
-                    <h1 className="text-[22px] font-bold" style={{ letterSpacing: '-0.02em' }}>{t.welcomeTitle}</h1>
-                    <p className="text-[14px] px-4" style={{ color: 'var(--tg-hint)' }}>{t.welcomeDesc}</p>
+                    <div>
+                        <h1 className="text-[23px] font-bold" style={{ letterSpacing: '-0.03em', margin: 0 }}>{t.welcomeTitle}</h1>
+                        <p className="text-[14px] mt-2 px-4" style={{ color: 'var(--tg-hint)', lineHeight: 1.5 }}>{t.welcomeDesc}</p>
+                    </div>
                 </div>
                 <div className="tg-card !p-0 overflow-hidden">
                     {[
-                        { icon: MessageCircle, text: t.welcomeStep1, num: '1' },
-                        { icon: ArrowRight, text: t.welcomeStep2, num: '2' },
-                        { icon: UserPlus, text: t.welcomeStep3, num: '3' },
-                        { icon: Settings, text: t.welcomeStep4, num: '4' },
+                        { icon: MessageCircle, text: t.welcomeStep1, num: '1', color: 'var(--blue)' },
+                        { icon: ArrowRight, text: t.welcomeStep2, num: '2', color: 'var(--green)' },
+                        { icon: UserPlus, text: t.welcomeStep3, num: '3', color: 'var(--orange)' },
+                        { icon: Settings, text: t.welcomeStep4, num: '4', color: 'var(--purple)' },
                     ].map((step, idx) => (
                         <div key={idx}>
                             <div className="list-row gap-3">
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                                    style={{ backgroundColor: 'var(--tg-accent)' }}>
+                                <div style={{
+                                    width: 32, height: 32, borderRadius: '50%',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: 13, fontWeight: 800, color: 'white', flexShrink: 0,
+                                    background: step.color,
+                                    boxShadow: `0 4px 12px ${step.color}55`,
+                                }}>
                                     {step.num}
                                 </div>
-                                <span className="text-[14px]">{step.text}</span>
+                                <span className="text-[14px]" style={{ lineHeight: 1.45 }}>{step.text}</span>
                             </div>
                             {idx < 3 && <div className="list-separator" />}
                         </div>
@@ -199,54 +262,47 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
     // ─── Main Dashboard ───
     return (
         <div className="flex flex-col gap-4 w-full">
+
             {/* Header */}
-            <header className="flex items-center justify-between px-1 py-2">
+            <header className="flex items-center justify-between px-1 py-2"
+                style={{ animation: 'sectionIn 0.4s var(--ease-out) both' }}>
                 <div className="flex items-center gap-3">
-                    {/* Creator avatar — real Telegram photo if available, else initials */}
-                    <div className="relative w-10 h-10 rounded-[12px] overflow-hidden flex-shrink-0"
-                        style={{ background: 'color-mix(in srgb, var(--tg-accent) 15%, transparent)' }}>
-                        {creatorPhotoUrl ? (
-                            <img
-                                src={creatorPhotoUrl}
-                                alt={userName}
-                                className="w-full h-full object-cover"
-                                style={{ borderRadius: 12 }}
-                                onError={() => setCreatorPhotoUrl(null)}
-                            />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[15px] font-bold"
-                                style={{ color: 'var(--tg-accent)' }}>
-                                {creatorInitials}
-                            </div>
-                        )}
-                    </div>
+                    <CreatorAvatar photoUrl={creatorPhotoUrl} initials={creatorInitials} size={44} />
                     <div>
-                        <h1 className="text-[17px] font-semibold leading-tight" style={{ letterSpacing: '-0.02em' }}>{userName}</h1>
-                        <p className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>{t.creatorDashboard}</p>
+                        <h1 style={{ fontSize: 17, fontWeight: 700, margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2 }}>{userName}</h1>
+                        <p style={{ fontSize: 12, color: 'var(--tg-hint)', margin: 0, marginTop: 1 }}>{t.creatorDashboard}</p>
                     </div>
                 </div>
-                {/* Commission badge — clickable */}
+                {/* Commission badge */}
                 <button onClick={() => setShowCommissionModal(true)}
-                    className="px-2.5 py-1 rounded-full text-[11px] font-bold"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--tg-accent) 12%, transparent)', color: 'var(--tg-accent)' }}>
+                    style={{
+                        padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700,
+                        background: 'color-mix(in srgb, var(--tg-accent) 11%, transparent)',
+                        color: 'var(--tg-accent)', border: '1px solid color-mix(in srgb, var(--tg-accent) 25%, transparent)',
+                        transition: 'transform 0.12s ease',
+                    }}
+                    onPointerDown={e => e.currentTarget.style.transform = 'scale(0.94)'}
+                    onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                    onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
                     {tier.rate}% {t.commissionLabel}
                 </button>
             </header>
 
-            {/* Revenue Card with Water */}
-            <div className="water-card">
+            {/* Revenue Card */}
+            <div className="water-card" style={{ animationDelay: '0.05s' }}>
                 <div className="water-fill" style={{ height: `${animated ? waterLevel : 0}%` }} />
                 <div className="water-content">
-                    <p className="text-[12px] font-medium opacity-70 uppercase tracking-wide">{t.lifetimeRevenue}</p>
-                    <div className="text-[34px] font-bold tracking-tight" style={{ letterSpacing: '-0.03em' }}>
-                        ${stats.lifetimeRevenue.toLocaleString()}
+                    <p style={{ fontSize: 11, fontWeight: 600, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                        {t.lifetimeRevenue}
+                    </p>
+                    <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 }}>
+                        {animated ? <AnimatedNum value={stats.lifetimeRevenue} /> : '$0'}
                     </div>
                     {nextTier && (
-                        <div className="flex items-center gap-1.5 mt-2 opacity-70">
-                            <TrendingUp size={13} />
-                            <span className="text-[12px]">
-                                {t.nextTier}: {nextTier.rate}% — ${nextTier.min.toLocaleString()}
-                            </span>
+                        <div className="flex items-center gap-1.5 mt-2" style={{ opacity: 0.65, fontSize: 12 }}>
+                            <TrendingUp size={12} />
+                            <span>{t.nextTier}: {nextTier.rate}% — ${nextTier.min.toLocaleString()}</span>
                         </div>
                     )}
                 </div>
@@ -254,62 +310,57 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-3">
+                {/* Active Subs */}
                 <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.1s' }}>
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="w-7 h-7 rounded-[7px] flex items-center justify-center"
-                            style={{ background: 'rgba(52, 199, 89, 0.12)', color: '#34c759' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(52,199,89,0.12)', color: 'var(--green)' }}>
                             <Users size={14} strokeWidth={2.4} />
                         </div>
-                        <span className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>{t.activeSubs}</span>
+                        <span style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{t.activeSubs}</span>
                     </div>
-                    <div className="text-[28px] font-bold" style={{ letterSpacing: '-0.03em' }}>{stats.activeSubs}</div>
-                    <div className="flex items-end gap-[3px] mt-3 h-[28px]">
-                        {[0, 0, 0, 0, 0, 0, 0].map((_, i) => {
-                            const barH = stats.activeSubs > 0
-                                ? Math.max(10, Math.min(100, (stats.activeSubs / 10) * [35, 55, 40, 65, 50, 70, 85][i]))
-                                : 4;
+                    <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em' }}>
+                        {animated ? <AnimatedNum value={stats.activeSubs} prefix="" /> : '0'}
+                    </div>
+                    <div className="flex items-end gap-[3px] mt-3" style={{ height: 28 }}>
+                        {[35, 55, 40, 65, 50, 72, 88].map((h, i) => {
+                            const barH = stats.activeSubs > 0 ? Math.max(10, Math.min(100, (stats.activeSubs / 10) * h)) : 4;
                             return (
-                                <div key={i} className="flex-1 rounded-[2px] mini-bar"
+                                <div key={i} className="flex-1 mini-bar"
                                     style={{
                                         height: animated ? `${barH}%` : '0%',
-                                        backgroundColor: stats.activeSubs > 0 ? 'rgba(52, 199, 89, 0.25)' : 'var(--tg-separator)',
-                                        transitionDelay: `${0.3 + i * 0.05}s`
+                                        backgroundColor: stats.activeSubs > 0 ? 'rgba(52,199,89,0.28)' : 'var(--tg-separator)',
+                                        transitionDelay: `${0.28 + i * 0.05}s`,
                                     }} />
                             );
                         })}
                     </div>
                 </div>
 
-                <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.2s' }}>
+                {/* Monthly MRR */}
+                <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.18s' }}>
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="w-7 h-7 rounded-[7px] flex items-center justify-center"
-                            style={{ background: 'rgba(0, 122, 255, 0.12)', color: '#007aff' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,122,255,0.12)', color: 'var(--blue)' }}>
                             <Activity size={14} strokeWidth={2.4} />
                         </div>
-                        <span className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>{t.monthlyMrr}</span>
+                        <span style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{t.monthlyMrr}</span>
                     </div>
-                    <div className="text-[28px] font-bold" style={{ letterSpacing: '-0.03em' }}>${stats.monthlyMrr.toLocaleString()}</div>
-                    <div className="mt-3 h-[28px] relative overflow-hidden">
+                    <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em' }}>
+                        {animated ? <AnimatedNum value={stats.monthlyMrr} /> : '$0'}
+                    </div>
+                    <div className="mt-3 relative overflow-hidden" style={{ height: 28 }}>
                         {chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={chartData}>
-                                    <Area
-                                        type="monotone"
-                                        dataKey="revenueTotal"
-                                        stroke={stats.monthlyMrr > 0 ? 'rgba(0, 122, 255, 0.5)' : 'var(--tg-separator)'}
-                                        fill="transparent"
-                                        strokeWidth={2}
-                                        isAnimationActive={animated}
-                                    />
+                                    <Area type="monotone" dataKey="revenueTotal"
+                                        stroke={stats.monthlyMrr > 0 ? 'rgba(0,122,255,0.55)' : 'var(--tg-separator)'}
+                                        fill="transparent" strokeWidth={2} isAnimationActive={animated} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         ) : (
                             <svg className="w-full h-full" viewBox="0 0 100 28" preserveAspectRatio="none">
-                                <path d={stats.monthlyMrr > 0
-                                    ? "M0 24 L14 18 L28 22 L42 12 L56 16 L70 8 L84 10 L100 4"
-                                    : "M0 24 L100 24"}
+                                <path d={stats.monthlyMrr > 0 ? "M0 24 L14 18 L28 22 L42 12 L56 16 L70 8 L84 10 L100 4" : "M0 24 L100 24"}
                                     fill="none"
-                                    stroke={stats.monthlyMrr > 0 ? 'rgba(0, 122, 255, 0.35)' : 'var(--tg-separator)'}
+                                    stroke={stats.monthlyMrr > 0 ? 'rgba(0,122,255,0.4)' : 'var(--tg-separator)'}
                                     strokeWidth="2" strokeLinecap="round"
                                     className={`chart-line ${animated ? 'drawn' : ''}`} />
                             </svg>
@@ -319,33 +370,31 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
             </div>
 
             {/* Broadcast Box */}
-            <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.4s' }}>
+            <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.3s' }}>
                 <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-[8px] flex items-center justify-center"
-                        style={{ background: 'rgba(52, 199, 89, 0.12)', color: '#34c759' }}>
-                        <Send size={16} strokeWidth={2.2} className="ml-0.5" />
+                    <div style={{ width: 32, height: 32, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(52,199,89,0.12)', color: 'var(--green)' }}>
+                        <Send size={15} strokeWidth={2.2} style={{ marginLeft: 2 }} />
                     </div>
-                    <span className="text-[15px] font-semibold">{t.broadcastTitle}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700 }}>{t.broadcastTitle}</span>
                 </div>
 
-                {/* Bot selector — always show when bots available */}
                 {botsList.length > 0 && (
                     <div className="mb-3">
-                        <p className="text-[11px] mb-1.5" style={{ color: 'var(--tg-hint)' }}>
-                            {t.broadcastSendVia}
-                        </p>
+                        <p style={{ fontSize: 11, color: 'var(--tg-hint)', marginBottom: 8 }}>{t.broadcastSendVia}</p>
                         <div className="flex flex-wrap gap-2">
                             {botsList.map(bot => (
-                                <button
-                                    key={bot.id}
-                                    onClick={() => setSelectedBroadcastBotId(bot.id)}
-                                    className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all"
+                                <button key={bot.id} onClick={() => setSelectedBroadcastBotId(bot.id)}
                                     style={{
+                                        padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600,
                                         background: selectedBroadcastBotId === bot.id
                                             ? 'var(--tg-accent)'
-                                            : 'color-mix(in srgb, var(--tg-hint) 12%, transparent)',
-                                        color: selectedBroadcastBotId === bot.id ? 'white' : 'var(--tg-hint)'
+                                            : 'color-mix(in srgb, var(--tg-hint) 10%, transparent)',
+                                        color: selectedBroadcastBotId === bot.id ? 'white' : 'var(--tg-hint)',
+                                        transition: 'background 0.18s, color 0.18s, transform 0.1s',
                                     }}
+                                    onPointerDown={e => e.currentTarget.style.transform = 'scale(0.94)'}
+                                    onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                                    onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                                 >
                                     {bot.username ? (bot.username.startsWith('@') ? bot.username : `@${bot.username}`) : bot.name}
                                 </button>
@@ -354,138 +403,129 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                     </div>
                 )}
 
-                <p className="text-[13px] mb-3 leading-snug" style={{ color: 'var(--tg-hint)' }}>
-                    {t.broadcastDesc}
-                </p>
+                <p style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 10, lineHeight: 1.45 }}>{t.broadcastDesc}</p>
 
-                <textarea
-                    rows={3}
+                <textarea rows={3}
                     placeholder={t.broadcastPlaceholder}
-                    className="w-full bg-transparent border border-[var(--tg-separator)] outline-none rounded-[12px] p-3 text-[14px] resize-none mb-1"
+                    className="tg-input"
                     value={broadcastText}
                     onChange={e => setBroadcastText(e.target.value)}
                     onFocus={() => {
                         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                        document.body.style.paddingBottom = '40vh';
+                        document.body.style.paddingBottom = '38vh';
                     }}
                     onBlur={() => {
                         document.body.style.paddingBottom = '0px';
                         window.scrollTo(0, 0);
                     }}
-                    style={{ color: 'var(--tg-text)' }}
+                    style={{ marginBottom: 6 }}
                 />
-                <p className="text-[11px] mb-4 text-center" style={{ color: 'var(--tg-hint)', opacity: 0.8 }}>
-                    <Sparkles size={11} className="inline mr-1 relative -top-[1px]" />
-                    Текст будет автоматически переведен на язык пользователя
+                <p style={{ fontSize: 11, color: 'var(--tg-hint)', opacity: 0.75, textAlign: 'center', marginBottom: 12 }}>
+                    <Sparkles size={11} style={{ display: 'inline', marginRight: 4, position: 'relative', top: -1 }} />
+                    {isRu ? 'Текст будет переведён на язык пользователя' : 'Text will be translated to the user\'s language'}
                 </p>
 
                 <button
                     onClick={handleSendBroadcast}
                     disabled={isSending || !broadcastText.trim() || !selectedBroadcastBotId}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-[12px] text-white font-semibold text-[15px] disabled:opacity-50 transition-all"
-                    style={{ backgroundColor: 'var(--tg-accent)' }}
+                    className="action-btn"
+                    style={{ fontSize: 14 }}
                 >
                     {isSending ? t.broadcastSending : t.broadcastSend}
                 </button>
             </div>
 
             {/* Tier Progress Row */}
-            <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.5s' }}>
+            <div className={`tg-card stat-card-anim ${animated ? 'visible' : ''}`} style={{ transitionDelay: '0.4s' }}>
                 <button className="flex items-center justify-between w-full" onClick={() => setShowCommissionModal(true)}>
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-[8px] flex items-center justify-center"
-                            style={{ background: 'rgba(255, 149, 0, 0.12)', color: '#ff9500' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,149,0,0.12)', color: 'var(--orange)' }}>
                             <Zap size={16} strokeWidth={2.2} />
                         </div>
-                        <div className="text-left">
-                            <span className="text-[14px] font-medium block">{t.commissionLabel}</span>
-                            <span className="text-[11px]" style={{ color: 'var(--tg-hint)' }}>
+                        <div style={{ textAlign: 'left' }}>
+                            <span style={{ fontSize: 14, fontWeight: 600, display: 'block' }}>{t.commissionLabel}</span>
+                            <span style={{ fontSize: 11, color: 'var(--tg-hint)' }}>
                                 {tier.rate}% → {nextTier ? `${nextTier.rate}%` : '5%'}
                             </span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         {TIERS.slice(0, 6).map((tr, i) => (
-                            <div key={i} className="w-2 h-2 rounded-full transition-all duration-500"
-                                style={{
-                                    backgroundColor: stats.lifetimeRevenue >= tr.max
-                                        ? 'var(--tg-accent)'
-                                        : 'var(--tg-separator)',
-                                    transform: stats.lifetimeRevenue >= tr.max ? 'scale(1.2)' : 'scale(1)'
-                                }} />
+                            <div key={i} style={{
+                                width: 7, height: 7, borderRadius: '50%',
+                                transition: 'all 0.5s',
+                                backgroundColor: stats.lifetimeRevenue >= tr.max ? 'var(--tg-accent)' : 'var(--tg-separator)',
+                                transform: stats.lifetimeRevenue >= tr.max ? 'scale(1.2)' : 'scale(1)',
+                            }} />
                         ))}
                     </div>
                 </button>
             </div>
 
-            {/* ─── Commission Modal (Centered Portal) ─── */}
+            {/* Commission Modal */}
             {showCommissionModal && typeof document !== 'undefined' && require('react-dom').createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-                    style={{ animation: 'fadeIn 0.2s ease-out' }}
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                    style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)', animation: 'fadeIn 0.2s ease-out' }}
                     onClick={() => setShowCommissionModal(false)}>
-                    <div className="w-full max-w-[340px] max-h-[85vh] overflow-y-auto overflow-x-hidden bg-[var(--tg-bg)] rounded-[24px] p-6 shadow-2xl relative scrollbar-hide"
-                        style={{ animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)' }}
+                    <div style={{
+                        width: '100%', maxWidth: 340, maxHeight: '85vh',
+                        overflowY: 'auto', background: 'var(--tg-bg)',
+                        borderRadius: 26, padding: 22, position: 'relative',
+                        animation: 'popIn 0.32s cubic-bezier(0.175,0.885,0.32,1.1)',
+                    }}
                         onClick={e => e.stopPropagation()}>
 
-                        {/* Decorative Background Blur */}
-                        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none"
-                            style={{ backgroundColor: 'var(--tg-accent)' }} />
+                        {/* Decorative blob */}
+                        <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'var(--tg-accent)', opacity: 0.07, filter: 'blur(32px)', pointerEvents: 'none' }} />
 
-                        <div className="flex items-center justify-between mb-4 relative z-10">
+                        <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                                    style={{ background: 'color-mix(in srgb, var(--tg-accent) 15%, transparent)', color: 'var(--tg-accent)' }}>
-                                    <Zap size={20} strokeWidth={2.5} />
+                                <div style={{ width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, var(--tg-accent) 12%, transparent)', color: 'var(--tg-accent)' }}>
+                                    <Zap size={19} strokeWidth={2.5} />
                                 </div>
-                                <h2 className="text-[19px] font-bold tracking-tight">{t.commissionLabel}</h2>
+                                <h2 style={{ fontSize: 19, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>{t.commissionLabel}</h2>
                             </div>
                             <button onClick={() => setShowCommissionModal(false)}
-                                className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity active:opacity-60"
-                                style={{ background: 'var(--tg-separator)' }}>
-                                <X size={16} style={{ color: 'var(--tg-hint)' }} />
+                                style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tg-separator)', transition: 'opacity 0.12s' }}>
+                                <X size={15} style={{ color: 'var(--tg-hint)' }} />
                             </button>
                         </div>
 
-                        <p className="text-[14px] mb-5 leading-relaxed relative z-10" style={{ color: 'var(--tg-hint)' }}>
-                            {isRu
-                                ? 'Чем больше вы зарабатываете, тем ниже комиссия платформы. Уровни открываются автоматически.'
-                                : 'The more you earn, the lower the platform commission. Tiers unlock automatically.'}
+                        <p style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 18, lineHeight: 1.5 }}>
+                            {isRu ? 'Чем больше вы зарабатываете, тем ниже комиссия.' : 'The more you earn, the lower the platform fee.'}
                         </p>
 
-                        <div className="flex flex-col gap-2 relative z-10">
+                        <div className="flex flex-col gap-2">
                             {TIERS.map((tr, idx) => {
                                 const isActive = tier.rate === tr.rate;
                                 const isPassed = stats.lifetimeRevenue >= tr.max;
                                 return (
-                                    <div key={idx} className="flex items-center justify-between p-3 rounded-[16px] transition-all"
-                                        style={{
-                                            backgroundColor: isActive ? 'var(--tg-accent)' : 'transparent',
-                                            border: isActive ? 'none' : '1px solid var(--tg-separator)'
-                                        }}>
+                                    <div key={idx} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '11px 14px', borderRadius: 16,
+                                        background: isActive ? 'var(--tg-accent)' : 'transparent',
+                                        border: isActive ? 'none' : '1px solid var(--tg-separator)',
+                                        transition: 'all 0.2s',
+                                    }}>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[13px] font-bold"
-                                                style={{
-                                                    backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : isPassed ? 'rgba(52, 199, 89, 0.15)' : 'color-mix(in srgb, var(--tg-hint) 10%, transparent)',
-                                                    color: isActive ? '#fff' : isPassed ? '#34c759' : 'var(--tg-hint)'
-                                                }}>
+                                            <div style={{
+                                                width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 13, fontWeight: 800,
+                                                background: isActive ? 'rgba(255,255,255,0.18)' : isPassed ? 'rgba(52,199,89,0.12)' : 'color-mix(in srgb, var(--tg-hint) 9%, transparent)',
+                                                color: isActive ? '#fff' : isPassed ? 'var(--green)' : 'var(--tg-hint)',
+                                            }}>
                                                 {tr.rate}%
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className={`text-[14px] ${isActive ? 'font-bold text-white' : 'font-semibold text-[var(--tg-text)]'}`}>
-                                                    {tr.max === Infinity
-                                                        ? `$${tr.min.toLocaleString()}+`
-                                                        : `$${tr.min.toLocaleString()} — $${tr.max.toLocaleString()}`}
+                                            <div>
+                                                <span style={{ fontSize: 14, fontWeight: isActive ? 700 : 500, color: isActive ? '#fff' : 'var(--tg-text)', display: 'block' }}>
+                                                    {tr.max === Infinity ? `$${tr.min.toLocaleString()}+` : `$${tr.min.toLocaleString()} — $${tr.max.toLocaleString()}`}
                                                 </span>
-                                                {isActive && (
-                                                    <span className="text-[11px] text-white/80 font-medium tracking-wide">
-                                                        {isRu ? 'ТЕКУЩИЙ УРОВЕНЬ' : 'CURRENT TIER'}
-                                                    </span>
-                                                )}
+                                                {isActive && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 700, letterSpacing: '0.06em' }}>{isRu ? 'ТЕКУЩИЙ' : 'CURRENT'}</span>}
                                             </div>
                                         </div>
                                         {isPassed && !isActive && (
-                                            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.15)' }}>
-                                                <span className="text-[12px] font-bold" style={{ color: '#34c759' }}>✓</span>
+                                            <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(52,199,89,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>✓</span>
                                             </div>
                                         )}
                                     </div>
@@ -493,8 +533,14 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
                             })}
                         </div>
 
-                        <button className="w-full mt-5 py-3.5 rounded-[14px] font-bold text-[15px] transition-transform active:scale-95"
-                            style={{ backgroundColor: 'var(--tg-separator)', color: 'var(--tg-text)' }}
+                        <button style={{
+                            width: '100%', marginTop: 18, padding: '14px', borderRadius: 14,
+                            fontWeight: 700, fontSize: 15, background: 'var(--tg-separator)', color: 'var(--tg-text)',
+                            transition: 'transform 0.1s',
+                        }}
+                            onPointerDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
+                            onPointerUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                            onPointerLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                             onClick={() => setShowCommissionModal(false)}>
                             {isRu ? 'Понятно' : 'Got it'}
                         </button>
@@ -504,25 +550,16 @@ export function DashboardView({ API_URL, t, userName }: { API_URL: string, t: Tr
             )}
 
             {/* Footer Links */}
-            <div className="flex items-center justify-center gap-4 mt-2 mb-4 opacity-70">
-                <button
-                    onClick={() => setLegalModal('terms')}
-                    className="text-[12px] font-medium"
-                    style={{ color: 'var(--tg-link, var(--tg-accent))' }}
-                >
+            <div className="flex items-center justify-center gap-4 mt-2 mb-4" style={{ opacity: 0.65 }}>
+                <button onClick={() => setLegalModal('terms')} style={{ fontSize: 12, fontWeight: 500, color: 'var(--tg-link)' }}>
                     {t.termsOfService}
                 </button>
-                <div className="w-[3px] h-[3px] rounded-full" style={{ background: 'var(--tg-hint)' }} />
-                <button
-                    onClick={() => setLegalModal('privacy')}
-                    className="text-[12px] font-medium"
-                    style={{ color: 'var(--tg-link, var(--tg-accent))' }}
-                >
+                <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--tg-hint)' }} />
+                <button onClick={() => setLegalModal('privacy')} style={{ fontSize: 12, fontWeight: 500, color: 'var(--tg-link)' }}>
                     {t.privacyPolicy}
                 </button>
             </div>
 
-            {/* Legal Modal Portal */}
             <LegalModal type={legalModal} onClose={() => setLegalModal(null)} t={t} />
         </div>
     );

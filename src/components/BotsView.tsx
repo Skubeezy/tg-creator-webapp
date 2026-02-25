@@ -17,7 +17,7 @@ interface BotData {
     plans: { period: string; price: number }[];
 }
 
-// ─── Bot Avatar (mirrors fan webapp's CreatorAvatar) ──────────────────────────
+// ─── Bot Avatar ───────────────────────────────────────────────────────────────
 
 function BotAvatar({ url, name, size = 44 }: { url?: string; name: string; size?: number }) {
     const [failed, setFailed] = useState(false);
@@ -28,7 +28,7 @@ function BotAvatar({ url, name, size = 44 }: { url?: string; name: string; size?
         <div style={{
             width: size, height: size, borderRadius: r, flexShrink: 0,
             overflow: 'hidden', position: 'relative',
-            background: 'color-mix(in srgb, var(--tg-accent) 14%, transparent)',
+            background: 'color-mix(in srgb, var(--tg-accent) 13%, transparent)',
         }}>
             {url && !failed ? (
                 <img src={url} alt={name} onError={() => setFailed(true)}
@@ -37,7 +37,7 @@ function BotAvatar({ url, name, size = 44 }: { url?: string; name: string; size?
                 <div style={{
                     width: '100%', height: '100%', display: 'flex',
                     alignItems: 'center', justifyContent: 'center',
-                    fontSize: Math.round(size * 0.35), fontWeight: 700,
+                    fontSize: Math.round(size * 0.34), fontWeight: 700,
                     color: 'var(--tg-accent)',
                 }}>
                     {initials}
@@ -47,7 +47,39 @@ function BotAvatar({ url, name, size = 44 }: { url?: string; name: string; size?
     );
 }
 
-export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }) {
+// ─── Confetti Burst ───────────────────────────────────────────────────────────
+
+function ConfettiBurst() {
+    const pieces = [
+        { color: 'var(--blue)', x: '-40px', y: '-50px' },
+        { color: 'var(--green)', x: '40px', y: '-48px' },
+        { color: 'var(--orange)', x: '-55px', y: '-20px' },
+        { color: 'var(--purple)', x: '55px', y: '-22px' },
+        { color: '#ff3b30', x: '-28px', y: '-60px' },
+        { color: 'var(--teal)', x: '28px', y: '-62px' },
+        { color: 'var(--green)', x: '0px', y: '-64px' },
+        { color: 'var(--orange)', x: '-44px', y: '12px' },
+    ];
+    return (
+        <>
+            {pieces.map((p, i) => (
+                <div key={i} className="confetti-piece" style={{
+                    background: p.color,
+                    left: '50%', top: '50%',
+                    '--confetti-end': `translate(${p.x}, ${p.y})`,
+                    animationDelay: `${i * 0.04}s`,
+                    width: i % 2 === 0 ? 7 : 5,
+                    height: i % 2 === 0 ? 7 : 10,
+                    borderRadius: i % 3 === 0 ? '50%' : 3,
+                } as React.CSSProperties} />
+            ))}
+        </>
+    );
+}
+
+// ─── BotsView ─────────────────────────────────────────────────────────────────
+
+export function BotsView({ API_URL, t }: { API_URL: string; t: TranslationDict }) {
     const isRu = t.isRu;
     const router = useRouter();
     const [bots, setBots] = useState<BotData[]>([]);
@@ -90,26 +122,19 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                     }
                 }
             }
-        } catch (e) {
-            console.error('Failed to load bots', e);
-        }
+        } catch (e) { console.error('Failed to load bots', e); }
     };
 
-    // Load bots from backend API, then sync and reload
     useEffect(() => {
         fetchBots().then(() => {
-            // Fire-and-forget sync: call sync endpoint, then re-fetch to pick up updated names/photos
             if (!syncedRef.current && typeof window !== 'undefined' && WebApp.initData) {
                 syncedRef.current = true;
                 fetch(`${API_URL}/me/bots/sync`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${WebApp.initData}` }
-                }).then(r => {
-                    if (r.ok) fetchBots(); // refresh list with new data
-                }).catch(() => { });
+                }).then(r => { if (r.ok) fetchBots(); }).catch(() => { });
             }
         });
-        // Trigger stagger entrance animation
         setTimeout(() => setAnimated(true), 80);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [API_URL, isRu]);
@@ -133,56 +158,32 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
         );
     }
 
-    // Create bot via backend API
     const handleTokenSubmit = async () => {
         if (!token.trim()) return;
         setIsLoading(true);
         setError('');
-
         try {
             if (typeof window !== 'undefined' && WebApp.initData) {
                 const res = await fetch(`${API_URL}/me/bots`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${WebApp.initData}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${WebApp.initData}` },
                     body: JSON.stringify({ token: token.trim() })
                 });
-
-                if (res.status === 401) {
-                    setError(t.authError);
-                    return;
-                }
-
+                if (res.status === 401) { setError(t.authError); return; }
                 const data = await res.json();
-
                 if (data.success && data.bot) {
-                    setBotInfo({
-                        id: data.bot.id,
-                        name: data.bot.name,
-                        username: data.bot.username,
-                        photoUrl: data.bot.photoUrl,
-                        plans: data.bot.plans
-                    });
+                    setBotInfo({ id: data.bot.id, name: data.bot.name, username: data.bot.username, photoUrl: data.bot.photoUrl, plans: data.bot.plans });
                     setWizardStep('preview');
                 } else {
                     setError(data.message || data.error || `${t.networkError}: ${res.status}`);
                 }
-            } else {
-                setError(t.webAppNotInit);
-            }
-        } catch (e: any) {
-            setError(`${t.networkError}: ${e.message || 'unknown'}`);
-        } finally {
-            setIsLoading(false);
-        }
+            } else { setError(t.webAppNotInit); }
+        } catch (e: any) { setError(`${t.networkError}: ${e.message || 'unknown'}`); }
+        finally { setIsLoading(false); }
     };
 
     const handleFinish = () => {
-        if (botInfo) {
-            setBots(prev => [...prev, botInfo]);
-        }
+        if (botInfo) setBots(prev => [...prev, botInfo]);
         setWizardStep('done');
         setTimeout(() => {
             setShowWizard(false);
@@ -191,7 +192,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
             setBotInfo(null);
             setError('');
             router.refresh();
-        }, 1200);
+        }, 1600);
     };
 
     // ─── Bot Creation Wizard ───
@@ -200,62 +201,80 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
             <div className="flex flex-col gap-4 w-full view-enter">
                 <header className="flex items-center gap-3 px-1">
                     <button onClick={() => { setShowWizard(false); setWizardStep('token'); setToken(''); setError(''); }}
-                        className="w-8 h-8 rounded-full flex items-center justify-center"
-                        style={{ background: 'color-mix(in srgb, var(--tg-hint) 12%, transparent)' }}>
+                        style={{
+                            width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'color-mix(in srgb, var(--tg-hint) 10%, transparent)',
+                        }}>
                         <ArrowLeft size={18} style={{ color: 'var(--tg-accent)' }} />
                     </button>
-                    <h1 className="text-[18px] font-bold" style={{ letterSpacing: '-0.02em' }}>{t.createNewBot}</h1>
+                    <h1 style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>{t.createNewBot}</h1>
                 </header>
+
+                {/* Step indicator */}
+                <div className="flex items-center justify-center gap-2" style={{ padding: '4px 0' }}>
+                    {['token', 'preview', 'done'].map((step, i) => {
+                        const stepIdx = ['token', 'preview', 'done'].indexOf(wizardStep);
+                        const isPast = i < stepIdx;
+                        const isNow = i === stepIdx;
+                        return (
+                            <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{
+                                    width: isNow ? 24 : 8, height: 8, borderRadius: 4,
+                                    background: isNow ? 'var(--tg-accent)' : isPast ? 'color-mix(in srgb, var(--tg-accent) 45%, transparent)' : 'var(--tg-separator)',
+                                    transition: 'all 0.3s var(--ease-spring)',
+                                }} />
+                            </div>
+                        );
+                    })}
+                </div>
 
                 {wizardStep === 'token' && (
                     <div className="flex flex-col gap-4">
                         <div className="tg-card flex flex-col gap-3">
                             <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-[10px] flex items-center justify-center"
-                                        style={{ background: 'color-mix(in srgb, var(--tg-accent) 10%, transparent)', color: 'var(--tg-accent)' }}>
+                                    <div style={{
+                                        width: 40, height: 40, borderRadius: 12,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        background: 'color-mix(in srgb, var(--tg-accent) 10%, transparent)',
+                                        color: 'var(--tg-accent)',
+                                    }}>
                                         <Key size={20} strokeWidth={2} />
                                     </div>
                                     <div>
-                                        <p className="text-[15px] font-semibold">{t.botTokenLabel}</p>
-                                        <p className="text-[12px]" style={{ color: 'var(--tg-hint)' }}>
-                                            {t.botTokenHint}
-                                        </p>
+                                        <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{t.botTokenLabel}</p>
+                                        <p style={{ fontSize: 12, color: 'var(--tg-hint)', margin: 0, marginTop: 2 }}>{t.botTokenHint}</p>
                                     </div>
                                 </div>
                                 <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer"
                                     className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold shrink-0"
-                                    style={{ backgroundColor: 'color-mix(in srgb, var(--tg-accent) 12%, transparent)', color: 'var(--tg-accent)' }}>
-                                    @BotFather <ExternalLink size={11} />
+                                    style={{ backgroundColor: 'color-mix(in srgb, var(--tg-accent) 11%, transparent)', color: 'var(--tg-accent)' }}>
+                                    @BotFather <ExternalLink size={10} />
                                 </a>
                             </div>
                             <input
                                 type="text"
                                 value={token}
                                 onChange={e => { setToken(e.target.value); setError(''); }}
-                                placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                                className="w-full rounded-[12px] px-4 py-3 text-[14px] outline-none"
-                                style={{
-                                    background: 'color-mix(in srgb, var(--tg-hint) 8%, transparent)',
-                                    color: 'var(--tg-text)',
-                                    border: `1px solid ${error ? '#ff3b30' : 'color-mix(in srgb, var(--tg-hint) 15%, transparent)'}`
-                                }}
+                                placeholder="123456:ABC-DEF1234ghIkl..."
+                                className="tg-input"
+                                style={{ borderColor: error ? 'var(--red)' : undefined }}
                             />
-                            {error && <p className="text-[12px]" style={{ color: '#ff3b30' }}>{error}</p>}
+                            {error && <p style={{ fontSize: 12, color: 'var(--red)', margin: 0 }}>{error}</p>}
                         </div>
                         <button className="action-btn" onClick={handleTokenSubmit} disabled={!token.trim() || isLoading}>
-                            {isLoading ? <Loader2 size={18} className="animate-spin" /> : t.connectBot}
+                            {isLoading ? <Loader2 size={18} style={{ animation: 'spin 0.7s linear infinite' }} /> : t.connectBot}
                         </button>
                     </div>
                 )}
 
                 {wizardStep === 'preview' && botInfo && (
                     <div className="flex flex-col gap-4 view-enter">
-                        <div className="tg-card flex flex-col items-center gap-3 py-6">
-                            <BotAvatar url={botInfo.photoUrl} name={botInfo.name} size={64} />
+                        <div className="tg-card flex flex-col items-center gap-3 py-7">
+                            <BotAvatar url={botInfo.photoUrl} name={botInfo.name} size={68} />
                             <div className="text-center">
-                                <p className="text-[17px] font-bold">{botInfo.name}</p>
-                                <p className="text-[13px]" style={{ color: 'var(--tg-link)' }}>{botInfo.username}</p>
+                                <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{botInfo.name}</p>
+                                <p style={{ fontSize: 13, color: 'var(--tg-link)', margin: '4px 0 0' }}>{botInfo.username}</p>
                             </div>
                         </div>
 
@@ -264,31 +283,37 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                             {botInfo.plans.map((plan, idx) => (
                                 <div key={idx}>
                                     <div className="list-row justify-between">
-                                        <span className="text-[15px]">{plan.period}</span>
-                                        <span className="text-[15px] font-semibold" style={{ color: 'var(--tg-accent)' }}>${plan.price}</span>
+                                        <span style={{ fontSize: 15 }}>{plan.period}</span>
+                                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tg-accent)' }}>${plan.price}</span>
                                     </div>
-                                    {idx < botInfo.plans.length - 1 && <div className="list-separator" style={{ marginLeft: '16px' }} />}
+                                    {idx < botInfo.plans.length - 1 && <div className="list-separator" style={{ marginLeft: 16 }} />}
                                 </div>
                             ))}
                         </div>
-
-                        <p className="text-[12px] text-center" style={{ color: 'var(--tg-hint)' }}>
-                            {t.changePlansLater}
-                        </p>
-
-                        <button className="action-btn" onClick={handleFinish}>
-                            {t.done}
-                        </button>
+                        <p style={{ fontSize: 12, textAlign: 'center', color: 'var(--tg-hint)' }}>{t.changePlansLater}</p>
+                        <button className="action-btn" onClick={handleFinish}>{t.done}</button>
                     </div>
                 )}
 
                 {wizardStep === 'done' && (
-                    <div className="tg-card flex flex-col items-center gap-3 py-10 view-enter">
-                        <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                            style={{ background: 'rgba(52, 199, 89, 0.12)', color: '#34c759' }}>
-                            <CheckCircle size={32} strokeWidth={1.8} />
+                    <div className="tg-card flex flex-col items-center gap-4 py-12 view-enter">
+                        <div style={{ position: 'relative' }} className="confetti-wrap">
+                            <div style={{
+                                width: 60, height: 60, borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'rgba(52,199,89,0.12)', color: 'var(--green)',
+                                animation: 'popIn 0.5s var(--ease-bounce) both',
+                            }}>
+                                <CheckCircle size={34} strokeWidth={1.6} />
+                            </div>
+                            <ConfettiBurst />
                         </div>
-                        <p className="text-[17px] font-bold">{t.botCreated}</p>
+                        <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{t.botCreated}</p>
+                            <p style={{ fontSize: 13, color: 'var(--tg-hint)', margin: '6px 0 0' }}>
+                                {isRu ? 'Всё готово! Настройте бота в следующем экране' : 'All set! Configure your bot next'}
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
@@ -298,7 +323,7 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
     // ─── Bot List ───
     return (
         <div className={`flex flex-col gap-4 w-full ${viewAnim}`}>
-            <h1 className="text-[22px] font-bold px-1" style={{ letterSpacing: '-0.02em' }}>{t.myBots}</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.035em', padding: '0 4px', margin: 0 }}>{t.myBots}</h1>
 
             {/* Add new bot */}
             <div className="tg-card !p-0 overflow-hidden">
@@ -307,36 +332,48 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
                     style={{ color: 'var(--tg-accent)' }}
                     onClick={() => { setViewAnim('view-enter'); setShowWizard(true); }}
                 >
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center"
-                        style={{ background: 'color-mix(in srgb, var(--tg-accent) 10%, transparent)' }}>
+                    <div style={{
+                        width: 44, height: 44, borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'color-mix(in srgb, var(--tg-accent) 10%, transparent)',
+                        border: '1.5px dashed color-mix(in srgb, var(--tg-accent) 35%, transparent)',
+                        // Subtle pulse to draw attention
+                        animation: bots.length === 0 ? 'logoPulse 2.5s ease-in-out infinite' : 'none',
+                    }}>
                         <Plus size={22} strokeWidth={2.2} style={{ color: 'var(--tg-accent)' }} />
                     </div>
-                    <span className="text-[15px] font-medium">{t.createNewBot}</span>
+                    <span style={{ fontSize: 15, fontWeight: 600 }}>{t.createNewBot}</span>
                 </button>
             </div>
 
             {bots.length > 0 && (
                 <div className="tg-card !p-0 overflow-hidden">
                     {bots.map((bot, idx) => (
-                        <div key={bot.id}
-                            className="bot-row-enter"
-                            style={{ animationDelay: `${idx * 0.06}s` }}>
+                        <div key={bot.id} className="bot-row-enter" style={{ animationDelay: `${idx * 0.07}s` }}>
                             <button
                                 onClick={() => { setViewAnim('view-enter'); setSelectedBotId(bot.id); }}
                                 className="list-row w-full justify-between"
+                                style={{ position: 'relative', overflow: 'hidden' }}
                             >
-                                <div className="flex items-center gap-3">
+                                {/* Left accent stripe */}
+                                <div style={{
+                                    position: 'absolute', left: 0, top: 8, bottom: 8,
+                                    width: 3, borderRadius: '0 3px 3px 0',
+                                    background: 'var(--tg-accent)',
+                                    opacity: 0.5,
+                                }} />
+                                <div className="flex items-center gap-3" style={{ paddingLeft: 8 }}>
                                     <BotAvatar url={bot.photoUrl} name={bot.name} size={44} />
-                                    <div className="text-left">
-                                        <span className="text-[15px] font-semibold leading-tight block">{bot.name}</span>
+                                    <div style={{ textAlign: 'left' }}>
+                                        <span style={{ fontSize: 15, fontWeight: 600, display: 'block', lineHeight: 1.2 }}>{bot.name}</span>
                                         {bot.username && (
-                                            <span className="text-[13px]" style={{ color: 'var(--tg-hint)' }}>
+                                            <span style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
                                                 {bot.username.startsWith('@') ? bot.username : `@${bot.username}`}
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <ChevronRight size={18} style={{ color: 'var(--tg-hint)', opacity: 0.5 }} />
+                                <ChevronRight size={17} style={{ color: 'var(--tg-hint)', opacity: 0.45 }} />
                             </button>
                             {idx < bots.length - 1 && <div className="list-separator" />}
                         </div>
@@ -345,24 +382,27 @@ export function BotsView({ API_URL, t }: { API_URL: string, t: TranslationDict }
             )}
 
             {bots.length === 0 && animated && (
-                <div className="tg-card flex flex-col items-center gap-3 py-10 stat-card-anim visible"
-                    style={{ textAlign: 'center' }}>
-                    <div className="w-14 h-14 rounded-[16px] flex items-center justify-center"
-                        style={{ background: 'color-mix(in srgb, var(--tg-hint) 10%, transparent)' }}>
+                <div className="tg-card flex flex-col items-center gap-3 py-12 stat-card-anim visible" style={{ textAlign: 'center' }}>
+                    <div style={{
+                        width: 56, height: 56, borderRadius: 18,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'color-mix(in srgb, var(--tg-hint) 9%, transparent)',
+                        animation: 'breathe 3s ease-in-out infinite',
+                    }}>
                         <Bot size={28} style={{ color: 'var(--tg-hint)' }} strokeWidth={1.5} />
                     </div>
                     <div>
-                        <p className="text-[15px] font-semibold" style={{ color: 'var(--tg-text)' }}>
+                        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--tg-text)', margin: 0 }}>
                             {isRu ? 'Нет ботов' : 'No bots yet'}
                         </p>
-                        <p className="text-[13px] mt-1" style={{ color: 'var(--tg-hint)' }}>
+                        <p style={{ fontSize: 13, marginTop: 4, color: 'var(--tg-hint)' }}>
                             {isRu ? 'Создайте первого бота выше' : 'Create your first bot above'}
                         </p>
                     </div>
                 </div>
             )}
 
-            <p className="text-[12px] text-center px-8" style={{ color: 'var(--tg-hint)' }}>
+            <p style={{ fontSize: 12, textAlign: 'center', paddingInline: 24, color: 'var(--tg-hint)' }}>
                 {t.botAdminHint}
             </p>
         </div>

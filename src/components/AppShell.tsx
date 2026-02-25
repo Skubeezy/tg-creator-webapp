@@ -20,7 +20,7 @@ function detectLowEnd(): boolean {
     return false;
 }
 
-// ─── Save FAB ─────────────────────────────────────────────────────────────────
+// ─── Save FAB — elegant pill with animated success ring ──────────────────────
 
 type FABState = 'idle' | 'saving' | 'success';
 
@@ -28,83 +28,109 @@ function SaveFAB({ state, visible, onClick }: { state: FABState; visible: boolea
     const isSaving = state === 'saving';
     const isSuccess = state === 'success';
     const [showCheck, setShowCheck] = useState(false);
+    const [ringVisible, setRingVisible] = useState(false);
 
     useEffect(() => {
-        if (isSuccess) setShowCheck(true);
+        if (isSuccess) {
+            setShowCheck(true);
+            setRingVisible(true);
+            const t = setTimeout(() => setRingVisible(false), 600);
+            return () => clearTimeout(t);
+        }
+    }, [isSuccess]);
+
+    useEffect(() => {
         if (!visible) {
             const t = setTimeout(() => setShowCheck(false), 400);
             return () => clearTimeout(t);
         }
-    }, [isSuccess, visible]);
+    }, [visible]);
 
-    const iconColor = (isSaving || showCheck) ? 'var(--tg-accent, #007aff)' : 'var(--tg-text, currentColor)';
-    const iconOpacity = (isSaving || showCheck) ? 1 : 0.62;
+    const accentColor = isSuccess ? 'var(--green, #34c759)' : 'var(--tg-accent, #007aff)';
 
     return (
-        <button
-            className="tab-bar-inner"
-            onClick={onClick}
-            disabled={isSaving}
-            aria-label="Save settings"
-            style={{
-                width: 54,
-                height: 54,
-                borderRadius: '50%',
-                padding: 0,
-                flexShrink: 0,
-                border: 'none',
-                cursor: isSaving ? 'default' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden',
-                pointerEvents: visible ? 'auto' : 'none',
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'scale(1) translateX(0)' : 'scale(0.55) translateX(22px)',
-                transition: 'opacity 0.28s cubic-bezier(0.22,0.61,0.36,1), transform 0.28s cubic-bezier(0.22,0.61,0.36,1)',
-            }}
-        >
-            {/* Inner sheen */}
-            <div style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 55%)',
-                pointerEvents: 'none',
-            }} />
-
-            {/* Save icon */}
-            <svg viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round"
-                style={{
-                    width: 22, height: 22, position: 'absolute',
-                    opacity: showCheck ? 0 : iconOpacity,
-                    transform: isSaving ? 'scale(0.85)' : 'scale(1)',
-                    animation: isSaving ? 'saveSpin 0.55s linear infinite' : 'none',
-                    transition: 'opacity 0.2s ease, transform 0.15s ease, stroke 0.25s ease',
-                }}
-            >
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-            </svg>
-
-            {/* Checkmark */}
-            <svg viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2.5"
-                strokeLinecap="round" strokeLinejoin="round"
-                style={{
-                    width: 22, height: 22, position: 'absolute',
-                    opacity: showCheck ? 1 : 0,
-                    transform: showCheck ? 'scale(1)' : 'scale(0.4)',
-                    transition: 'opacity 0.2s ease 0.05s, transform 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.05s',
-                }}
-            >
-                <polyline points="4 13 9 18 20 7" style={{
-                    strokeDasharray: 25,
-                    strokeDashoffset: showCheck ? 0 : 25,
-                    transition: 'stroke-dashoffset 0.26s ease 0.09s',
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+            {/* Success burst ring */}
+            {ringVisible && (
+                <div style={{
+                    position: 'absolute',
+                    inset: -2,
+                    borderRadius: '50%',
+                    border: `2px solid ${accentColor}`,
+                    animation: 'saveSuccessRing 0.55s ease-out forwards',
+                    pointerEvents: 'none',
                 }} />
-            </svg>
-        </button>
+            )}
+
+            <button
+                onClick={onClick}
+                disabled={isSaving}
+                aria-label="Save settings"
+                style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: '50%',
+                    padding: 0,
+                    flexShrink: 0,
+                    border: `1.5px solid color-mix(in srgb, ${accentColor} 40%, transparent)`,
+                    cursor: isSaving ? 'default' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    pointerEvents: visible ? 'auto' : 'none',
+                    opacity: visible ? 1 : 0,
+                    transform: visible ? 'scale(1)' : 'scale(0.5)',
+                    transition: 'opacity 0.3s var(--ease-out, cubic-bezier(0.16,1,0.3,1)), transform 0.3s var(--ease-spring, cubic-bezier(0.175,0.885,0.32,1.275)), background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
+                    background: `color-mix(in srgb, ${accentColor} 12%, var(--glass-bg, rgba(255,255,255,0.85)))`,
+                    backdropFilter: 'blur(40px)',
+                    WebkitBackdropFilter: 'blur(40px)',
+                    boxShadow: isSuccess
+                        ? `0 0 0 0.5px color-mix(in srgb, var(--green) 30%, transparent), 0 6px 24px color-mix(in srgb, var(--green) 35%, transparent)`
+                        : `0 0 0 0.5px color-mix(in srgb, var(--tg-hint) 18%, transparent), 0 6px 24px rgba(0,0,0,0.16)`,
+                }}
+            >
+                {/* Inner sheen */}
+                <div style={{
+                    position: 'absolute', inset: 0, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 55%)',
+                    pointerEvents: 'none',
+                }} />
+
+                {/* Save / spin icon */}
+                <svg viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    style={{
+                        width: 20, height: 20, position: 'absolute',
+                        opacity: showCheck ? 0 : 0.9,
+                        animation: isSaving ? 'saveSpin 0.6s linear infinite' : 'none',
+                        transition: 'opacity 0.18s ease, stroke 0.25s ease',
+                    }}
+                >
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                </svg>
+
+                {/* Checkmark — animated draw */}
+                <svg viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2.5"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    style={{
+                        width: 20, height: 20, position: 'absolute',
+                        opacity: showCheck ? 1 : 0,
+                        transform: showCheck ? 'scale(1)' : 'scale(0.5)',
+                        transition: 'opacity 0.18s ease 0.04s, transform 0.28s cubic-bezier(0.34,1.56,0.64,1) 0.04s',
+                    }}
+                >
+                    <polyline points="4 13 9 18 20 7" style={{
+                        strokeDasharray: 28,
+                        strokeDashoffset: showCheck ? 0 : 28,
+                        transition: 'stroke-dashoffset 0.28s ease 0.08s',
+                    }} />
+                </svg>
+            </button>
+        </div>
     );
 }
 
@@ -126,6 +152,19 @@ export default function AppShell() {
 
     const fabState: FABState = fabSaving ? 'saving' : fabSuccess ? 'success' : 'idle';
     const fabVisible = fabUnsaved || fabSaving || fabSuccess;
+
+    // Pill ref for imperative smooth positioning (avoids re-render jank)
+    const pillRef = useRef<HTMLDivElement>(null);
+    const ITEM_W = 46;  // matches .tab-item width in CSS
+    const ITEM_GAP = 2; // matches gap: 2px in CSS
+    const PAD = 6;       // matches padding: 6px in CSS
+
+    useEffect(() => {
+        const pill = pillRef.current;
+        if (!pill) return;
+        const left = PAD + activeIndex * (ITEM_W + ITEM_GAP);
+        pill.style.left = `${left}px`;
+    }, [activeIndex]);
 
     // Watch body dataset for FAB signals from SettingsView
     useEffect(() => {
@@ -159,7 +198,6 @@ export default function AppShell() {
                 if (WebApp.disableVerticalSwipes) WebApp.disableVerticalSwipes();
             } catch (_) { }
 
-            // Performance detection — add .perf-low to html element
             if (detectLowEnd()) {
                 document.documentElement.classList.add('perf-low');
             }
@@ -190,7 +228,6 @@ export default function AppShell() {
 
     const t = useMemo(() => getTranslation(langCode), [langCode]);
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://tg-creator-saas.vercel.app/api/bots';
-    const tabLabels = useMemo(() => [t.dashboard, t.myBots, t.payouts], [t]);
 
     const handleTabChange = useCallback((idx: number) => {
         setPrevIndex(activeIndex);
@@ -239,55 +276,54 @@ export default function AppShell() {
             {/* ── Unified Bottom Bar ── */}
             <div style={{
                 position: 'fixed',
-                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
-                left: 16,
-                right: 16,
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
+                left: 0,
+                right: 0,
                 display: 'flex',
                 alignItems: 'center',
-                gap: fabVisible ? 8 : 0,
+                justifyContent: 'center',
+                gap: 10,
                 zIndex: 100,
                 pointerEvents: 'none',
+                paddingInline: 16,
             }}>
-                {/* Nav pill */}
-                <div style={{
-                    flex: 1,
-                    minWidth: 0,
-                    pointerEvents: 'auto',
-                    transition: isMounted ? 'flex 0.48s ease-in-out' : 'none',
-                }}>
-                    <div className="tab-bar-inner">
-                        <div className="tab-pill" style={{
-                            transform: `translateX(${activeIndex * 100}%)`,
-                        }} />
-                        {icons.map((Icon, idx) => {
-                            const isActive = activeIndex === idx;
-                            return (
-                                <button
-                                    key={idx}
-                                    className={`tab-item ${isActive ? 'active' : ''}`}
-                                    onClick={() => handleTabChange(idx)}
-                                >
-                                    <span className={isActive ? 'tab-icon' : ''}>
-                                        <Icon size={24} strokeWidth={isActive ? 2.4 : 1.65} />
-                                    </span>
-                                    <span>{tabLabels[idx]}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
+                {/* Nav pill — icon only, compact */}
+                <div
+                    className="tab-bar-inner"
+                    style={{ pointerEvents: 'auto' }}
+                >
+                    {/* Active background squircle — positioned imperatively */}
+                    <div
+                        ref={pillRef}
+                        className="tab-pill"
+                        style={{
+                            top: 6,
+                            height: 40,
+                            width: 46,
+                            left: PAD,
+                        }}
+                    />
+
+                    {icons.map((Icon, idx) => {
+                        const isActive = activeIndex === idx;
+                        return (
+                            <button
+                                key={idx}
+                                className={`tab-item ${isActive ? 'active' : ''}`}
+                                onClick={() => handleTabChange(idx)}
+                                aria-label={['Dashboard', 'Bots', 'Payouts'][idx]}
+                            >
+                                <span className={isActive ? 'tab-icon' : ''}>
+                                    <Icon size={22} strokeWidth={isActive ? 2.4 : 1.7} />
+                                </span>
+                                <span className="tab-dot" />
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {/* Save FAB wrapper */}
-                <div style={{
-                    width: fabVisible ? 62 : 0,
-                    flexShrink: 0,
-                    overflow: 'visible',
-                    transition: isMounted ? 'width 0.48s ease-in-out' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    pointerEvents: 'auto',
-                }}>
+                {/* Save FAB */}
+                <div style={{ pointerEvents: 'auto', flexShrink: 0 }}>
                     <SaveFAB state={fabState} visible={fabVisible} onClick={handleFabClick} />
                 </div>
             </div>

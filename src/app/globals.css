@@ -12,12 +12,12 @@
   --tg-accent: var(--tg-theme-button-color, #007aff);
   --tg-accent-text: var(--tg-theme-button-text-color, #ffffff);
   --tg-link: var(--tg-theme-link-color, #007aff);
-  --tg-separator: rgba(60, 60, 67, 0.12);
+  --tg-separator: color-mix(in srgb, var(--tg-hint) 18%, transparent);
 
-  /* Glass surfaces */
-  --glass-bg: rgba(255, 255, 255, 0.82);
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-shadow: 0 8px 40px -4px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 0 0.5px rgba(0, 0, 0, 0.05) inset;
+  /* Glass surfaces — use secondary-bg which Telegram correctly darkens in night mode */
+  --glass-bg: color-mix(in srgb, var(--tg-secondary-bg) 92%, transparent);
+  --glass-border: color-mix(in srgb, var(--tg-hint) 14%, transparent);
+  --glass-shadow: 0 8px 40px -4px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.07), 0 0 0 0.5px color-mix(in srgb, var(--tg-hint) 10%, transparent) inset;
   --glass-blur: 32px;
 
   /* Radius scale */
@@ -49,14 +49,8 @@
   --teal: #2aabee;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --tg-separator: rgba(255, 255, 255, 0.1);
-    --glass-bg: rgba(28, 28, 30, 0.82);
-    --glass-border: rgba(255, 255, 255, 0.09);
-    --glass-shadow: 0 8px 40px -4px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.05) inset;
-  }
-}
+/* No static dark overrides needed — glass uses color-mix(var(--tg-bg)) which
+   auto-adapts to Telegram's injected theme color in both dark and light modes */
 
 /* Low-power mode – JS sets html.perf-low */
 html.perf-low * {
@@ -182,81 +176,79 @@ textarea {
   overscroll-behavior-x: contain;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━ Tab Bar ━━━━━━━━━━━━━━━━━━━━━━━━ */
-.tab-bar {
-  width: 100%;
-}
-
+/* ━━━━━━━━━━━━━━━━━━━━━━━━ Tab Bar — minimal floating ━━━━━━━━━━━━━━━━━━━━━━━━ */
 .tab-bar-inner {
   position: relative;
   display: flex;
   align-items: center;
   border-radius: var(--radius-pill);
-  padding: 5px;
+  /* tightly packed — icon only */
+  padding: 6px;
+  gap: 2px;
   background: var(--glass-bg);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.07),
-    0 10px 40px rgba(0, 0, 0, 0.14),
-    0 2px 6px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    0 0 0 0.5px color-mix(in srgb, var(--tg-hint) 18%, transparent),
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  .tab-bar-inner {
-    box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 0.08),
-      0 10px 40px rgba(0, 0, 0, 0.6),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  }
-}
-
+/* Active squircle indicator behind icon */
 .tab-pill {
   position: absolute;
-  top: 5px;
-  bottom: 5px;
-  left: 5px;
-  width: calc((100% - 10px) / 3);
-  border-radius: calc(var(--radius-pill) - 2px);
-  background: color-mix(in srgb, var(--tg-accent) 12%, transparent);
-  transition: transform 0.36s cubic-bezier(0.34, 1.32, 0.64, 1);
+  border-radius: calc(var(--radius-pill) - 4px);
+  background: color-mix(in srgb, var(--tg-accent) 14%, transparent);
+  transition: transform 0.36s cubic-bezier(0.34, 1.32, 0.64, 1),
+    width 0.36s cubic-bezier(0.34, 1.32, 0.64, 1),
+    left 0.36s cubic-bezier(0.34, 1.32, 0.64, 1);
   will-change: transform;
   pointer-events: none;
 }
 
 .tab-item {
-  flex: 1;
+  /* square-ish target, icon only */
+  width: 46px;
+  height: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 8px 0 6px;
+  gap: 0;
   position: relative;
   z-index: 1;
   color: var(--tg-hint);
   transition: color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-spring);
-}
-
-.tab-item span {
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.2;
-  transition: font-weight var(--dur-fast), opacity var(--dur-fast);
+  border-radius: calc(var(--radius-pill) - 4px);
 }
 
 .tab-item.active {
   color: var(--tg-accent);
 }
 
-.tab-item.active span {
-  font-weight: 700;
+.tab-item:active {
+  transform: scale(0.82);
+  opacity: 0.7;
 }
 
-.tab-item:active {
-  transform: scale(0.84);
-  opacity: 0.7;
+/* Active dot indicator below icon */
+.tab-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--tg-accent);
+  margin-top: 3px;
+  transition: transform 0.28s var(--ease-bounce), opacity 0.2s ease;
+}
+
+.tab-item:not(.active) .tab-dot {
+  transform: scale(0);
+  opacity: 0;
+}
+
+.tab-item.active .tab-dot {
+  transform: scale(1);
+  opacity: 1;
 }
 
 /* Tab icon bounce on active */
@@ -266,11 +258,11 @@ textarea {
 
 @keyframes tabIconBounce {
   0% {
-    transform: scale(0.7);
+    transform: scale(0.72);
   }
 
   60% {
-    transform: scale(1.12);
+    transform: scale(1.14);
   }
 
   100% {
@@ -411,18 +403,52 @@ textarea {
   }
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━ Save FAB spin ━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━ Save FAB animations ━━━━━━━━━━━━━━━━━━━━━━━━ */
 @keyframes saveSpin {
   0% {
-    transform: rotate(0deg) scale(0.85);
+    transform: rotate(0deg) scale(0.9);
   }
 
   50% {
-    transform: rotate(180deg) scale(0.9);
+    transform: rotate(200deg) scale(1.05);
   }
 
   100% {
-    transform: rotate(360deg) scale(0.85);
+    transform: rotate(360deg) scale(0.9);
+  }
+}
+
+@keyframes saveButtonSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5) translateX(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+@keyframes saveCheckDraw {
+  from {
+    stroke-dashoffset: 28;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes saveSuccessRing {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
   }
 }
 
